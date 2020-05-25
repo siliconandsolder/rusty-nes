@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 #![allow(warnings)]
 
-use crate::memory::*;
+use crate::data_bus::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::u8;
@@ -269,7 +269,7 @@ pub struct Cpu {
     pgmCounter: u16,
     stkPointer: u8,
 
-    memory: Rc<RefCell<Memory>>,
+    memory: Rc<RefCell<DataBus>>,
 
     // flag(s)
     flags: Flags,
@@ -282,7 +282,7 @@ pub struct Cpu {
     // Bit 6 - (O) Overflow
     // Bit 7 - (N) Negative
 
-    waitCycles: u8,
+    waitCycles: u16,
 
     triggerNmi: bool,
     triggerIrq: bool
@@ -290,6 +290,8 @@ pub struct Cpu {
 
 impl Clocked for Cpu {
     fn cycle(&mut self) {
+
+        // check for oam pause (514 cycles)
 
         if self.waitCycles != 0 {
             self.waitCycles -= 1;
@@ -313,18 +315,18 @@ impl Clocked for Cpu {
         self.executeInstruction(opMn, target);
 
         // we add cycles so that potential interrupt cycles are not erased
-        self.waitCycles += cycles;
-        if boundaryCrossed { self.waitCycles += xCycles; }
+        self.waitCycles += cycles as u16;
+        if boundaryCrossed { self.waitCycles += xCycles as u16; }
     }
 }
 
 impl Cpu {
 
-    pub fn new (memory: Rc<RefCell<Memory>>) -> Cpu {
+    pub fn new (memory: Rc<RefCell<DataBus>>) -> Cpu {
 
         // load reset vector into program counter
-        let lo: u16 = memory.borrow().readMemory(0xFFFC) as u16;
-        let hi: u16 = memory.borrow().readMemory(0xFFFD) as u16;
+        let lo: u16 = memory.borrow().readCpuMem(0xFFFC) as u16;
+        let hi: u16 = memory.borrow().readCpuMem(0xFFFD) as u16;
         let prgC: u16 = hi << 8 + lo;
 
         let mut cpu = Cpu {
@@ -418,6 +420,15 @@ impl Cpu {
     pub fn setIrq(&mut self) -> () {
         if self.flags.interrupt == 0 {
             self.triggerIrq = true;
+        }
+    }
+
+    pub fn addOamCycles(&mut self) -> () {
+        if self.waitCycles % 2 == 0 {
+            self.waitCycles += 514;
+        }
+        else {
+            self.waitCycles += 513;
         }
     }
 
@@ -943,24 +954,24 @@ impl Cpu {
     }
 
     fn readMem16(&self, ref addr: u16) -> u16 {
-        let lo = self.memory.borrow().readMemory(*addr);
-        let hi = self.memory.borrow().readMemory((*addr + 1));
+        let lo = self.memory.borrow().readCpuMem(*addr);
+        let hi = self.memory.borrow().readCpuMem((*addr + 1));
         return (hi as u16) << 8 | lo as u16;
     }
 
     fn readMem8(&self, ref addr: u16) -> u8 {
-        return self.memory.borrow().readMemory(*addr);
+        return self.memory.borrow().readCpuMem(*addr);
     }
 
     fn writeMem8(&self, ref addr: u16, value: u8) -> () {
-        self.memory.borrow_mut().writeMemory(*addr, value);
+        self.memory.borrow_mut().writeCpuMem(*addr, value);
     }
 
     fn writeMem16(&self, ref addr: u16, value: u16) -> () {
         let lo = (value & 0x00FF) as u8;
         let hi = (value >> 8) as u8;
-        self.memory.borrow_mut().writeMemory(*addr, lo);
-        self.memory.borrow_mut().writeMemory(addr.wrapping_add(1), hi);
+        self.memory.borrow_mut().writeCpuMem(*addr, lo);
+        self.memory.borrow_mut().writeCpuMem(addr.wrapping_add(1), hi);
     }
 
     fn pushStack(&mut self, ref value: u8) -> () {
@@ -1232,7 +1243,7 @@ mod CpuSpc {
     use super::*;
 
     fn getNewCpu() -> Cpu {
-        Cpu::new(Rc::new(RefCell::new(Memory::new())))
+        Cpu::new(Rc::new(RefCell::new(DataBus::new())))
     }
 
     #[test]
@@ -1276,7 +1287,7 @@ mod CpuSpc {
     #[test]
     fn getAddressInfoAbsoluteX() {
         let mut cpu = getNewCpu();
-        cpu.memory.borrow_mut().writeMemory(0, 0xFF);
+        cpu.memory.borrow_mut().writeCpuMem(0, 0xFF);
         cpu.regX = 1;
         let (target, bytes, shouldInc, boundaryCrossed) = cpu.getAddressInfo(OpMnemonic::NOP, ABS_X, 0);
         assert_eq!(target, Some(0x0100));
@@ -1288,7 +1299,7 @@ mod CpuSpc {
     #[test]
     fn getAddressInfoAbsoluteY() {
         let mut cpu = getNewCpu();
-        cpu.memory.borrow_mut().writeMemory(0, 0xFF);
+        cpu.memory.borrow_mut().writeCpuMem(0, 0xFF);
         cpu.regY = 1;
         let (target, bytes, shouldInc, boundaryCrossed) = cpu.getAddressInfo(OpMnemonic::NOP, ABS_Y, 0);
         assert_eq!(target, Some(0x0100));
@@ -1320,7 +1331,7 @@ mod CpuSpc {
     #[test]
     fn getAddressInfoIndirectIndexed() {
         let cpu = getNewCpu();
-        cpu.memory.borrow_mut().writeMemory(0, 0xFF);
+        cpu.memory.borrow_mut().writeCpuMem(0, 0xFF);
         let (target, bytes, shouldInc, boundaryCrossed) = cpu.getAddressInfo(OpMnemonic::NOP, IND_Y, 0);
         assert_eq!(target, Some(255));
         assert_eq!(bytes, 2);
@@ -1332,7 +1343,7 @@ mod CpuSpc {
     fn getAddressInfoIndexedIndirect() {
         let mut cpu = getNewCpu();
         cpu.regX = 1;
-        cpu.memory.borrow_mut().writeMemory(0, 0xFE);
+        cpu.memory.borrow_mut().writeCpuMem(0, 0xFE);
         let (target, bytes, shouldInc, boundaryCrossed) = cpu.getAddressInfo(OpMnemonic::NOP, IND_X, 0);
         assert_eq!(target, Some(255));
         assert_eq!(bytes, 2);
@@ -1364,7 +1375,7 @@ mod CpuSpc {
     fn getAddressInfoZeroPageX() {
         let mut cpu = getNewCpu();
         cpu.regX = 1;
-        cpu.memory.borrow_mut().writeMemory(0, 0xFF);
+        cpu.memory.borrow_mut().writeCpuMem(0, 0xFF);
         let (target, bytes, shouldInc, boundaryCrossed) = cpu.getAddressInfo(OpMnemonic::NOP, ZPG_X, 0);
         assert_eq!(target, Some(0));
         assert_eq!(bytes, 2);
@@ -1376,7 +1387,7 @@ mod CpuSpc {
     fn getAddressInfoZeroPageY() {
         let mut cpu = getNewCpu();
         cpu.regY = 1;
-        cpu.memory.borrow_mut().writeMemory(0, 0xFF);
+        cpu.memory.borrow_mut().writeCpuMem(0, 0xFF);
         let (target, bytes, shouldInc, boundaryCrossed) = cpu.getAddressInfo(OpMnemonic::NOP, ZPG_Y, 0);
         assert_eq!(target, Some(0));
         assert_eq!(bytes, 2);
@@ -1387,8 +1398,8 @@ mod CpuSpc {
     #[test]
     fn readMem16Spec() {
         let mut cpu = getNewCpu();
-        cpu.memory.borrow_mut().writeMemory(0, 0x01);
-        cpu.memory.borrow_mut().writeMemory(1, 0x01);
+        cpu.memory.borrow_mut().writeCpuMem(0, 0x01);
+        cpu.memory.borrow_mut().writeCpuMem(1, 0x01);
         let result = cpu.readMem16(0);
         assert_eq!(result, 257)
     }
