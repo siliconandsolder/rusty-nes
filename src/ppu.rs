@@ -15,10 +15,14 @@ const SCANLINE_MAX: u16 = 261;
 
 const CYCLE_MAX: u16 = 340;
 
+const CYCLES_PER_FRAME: u16 = 89342;
+
 pub struct Ppu {
     cycle: u16,
     scanLine: u16,
-    frame: u64,
+
+    frameCycles: u16,
+    isOddFrame: bool,
 
     v: u16,     // vram address
     t: u16,     // temp vram address
@@ -32,6 +36,7 @@ pub struct Ppu {
     bufData: u8,
 
     nmiOccured: bool,
+    canTrigNmi: bool,
 
     // flags
     // PPUCTRL
@@ -71,10 +76,12 @@ impl Clocked for Ppu {
         if self.scanLine == SCANLINE_MAX && self.cycle == 1 {
             self.fSprZero = 0;
             self.nmiOccured = false;
+            self.canTrigNmi = false;
         }
 
-        if self.fNmi == 1 && self.nmiOccured == true {
-            // triggerNMI here
+        if self.fNmi == 1 && self.nmiOccured && !self.canTrigNmi {
+            self.memory.borrow_mut().triggerNMI();
+            self.canTrigNmi = true;
         }
 
         if self.cycle >= 257 && self.cycle <= 320 {
@@ -112,6 +119,12 @@ impl Clocked for Ppu {
             self.scanLine += 1;
             if self.scanLine > SCANLINE_MAX { self.scanLine = 0; }
         }
+
+        self.frameCycles += 1;
+        if self.frameCycles % CYCLES_PER_FRAME == 0 {
+            self.isOddFrame = !self.isOddFrame;
+            self.frameCycles = 0;
+        }
     }
 }
 
@@ -120,7 +133,8 @@ impl Ppu {
         Ppu {
             cycle: 0,
             scanLine: 0,
-            frame: 0,
+            frameCycles: 0,
+            isOddFrame: false,
             v: 0,
             t: 0,
             x: 0,
@@ -130,6 +144,7 @@ impl Ppu {
             oamAddr: 0,
             bufData: 0,
             nmiOccured: false,
+            canTrigNmi: false,
             fNameTable: 0,
             fIncMode: 0,
             fSprTile: 0,
@@ -185,6 +200,7 @@ impl Ppu {
         self.fMaster = (val >> 6) & 1;
         self.fNmi = (val >> 7) & 1;
 
+        self.canTrigNmi = true;
         self.t = ((self.t & 0b0111001111111111) | ((val & 0b00000011) as u16) << 10);
     }
 

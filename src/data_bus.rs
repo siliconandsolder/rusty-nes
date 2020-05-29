@@ -73,7 +73,7 @@ impl DataBus {
             return self.ppu.as_ref().unwrap().borrow_mut().readMem(*addr).clone();
         }
         else {
-            let cartData = self.cartridge.as_ref().unwrap().borrow_mut().cpuRead(*addr);
+            return self.cartridge.as_ref().unwrap().borrow_mut().cpuRead(*addr);
         }
     }
 
@@ -118,6 +118,14 @@ impl DataBus {
         }
 
         self.cpu.as_ref().unwrap().borrow_mut().addOamCycles();
+    }
+
+    pub fn triggerNMI(&mut self) -> () {
+        self.cpu.unwrap().borrow_mut().setNmi();
+    }
+
+    pub fn getPaletteColour(&mut self, ref addr: u16) -> u32 {
+
     }
 
     pub fn pushStack(&mut self, stackP: &mut u8, val: u8) -> () {

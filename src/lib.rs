@@ -1,4 +1,5 @@
 pub mod clock;
+pub mod palette;
 pub mod data_bus;
 pub mod save_load;
 pub mod cpu;
