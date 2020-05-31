@@ -38,6 +38,11 @@ pub struct Ppu {
     nmiOccured: bool,
     canTrigNmi: bool,
 
+    // shift registers
+    // tileShiftReg1: u16,
+    // tileShiftReg2: u16,
+
+
     // flags
     // PPUCTRL
     fNameTable: u8,
@@ -210,7 +215,7 @@ impl Ppu {
         self.fSprLeft = (val >> 2) & 1;
         self.fBckEnabled = (val >> 3) & 1;
         self.fSprEnabled = (val >> 4) & 1;
-        self.fColour = (val >> 5);
+        self.fColour = (val >> 5) & 1;
     }
 
     fn ppuStatus(&mut self) -> u8 {
@@ -331,5 +336,9 @@ impl Ppu {
             }
             self.v = (self.v & !0x03E0) | (y << 5);
         }
+    }
+
+    fn getPatternTable(&mut self) -> () {
+
     }
 }

@@ -5,15 +5,16 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use crate::cpu::*;
 use crate::ppu::*;
-use crate::cartridge::Cartridge;
+use crate::cartridge::{Cartridge, MIRROR};
+use crate::palette::*;
 
 
 pub struct DataBus {
     cpuMem: Vec<u8>,
     ppuMem: Vec<u8>,
-    palette: Vec<u8>,
-    nmTable: Vec<u8>,
-    pnTable: Vec<u8>,
+    tblPalette: Vec<u8>,
+    tblName: Vec<u8>,
+    tblPattern: Vec<u8>,
     oamMem: Vec<u8>,
     interruptMem: Vec<u8>,
 
@@ -27,9 +28,9 @@ impl DataBus {
         DataBus {
             cpuMem: vec![0; 0x0800],
             ppuMem: vec![0; 0x0008],
-            palette: vec![0; 0x0020],
-            nmTable: vec![0; 0x0800],
-            pnTable: vec![0; 0x2000],
+            tblPalette: vec![0; 0x0020],
+            tblName: vec![0; 0x1000],
+            tblPattern: vec![0; 0x1000],
             oamMem: vec![0; 0x0100],
             interruptMem: vec![0; 0x0006],
             cpu: None,
@@ -79,25 +80,67 @@ impl DataBus {
 
     pub fn writePpuMem(&mut self, ref addr: u16, val: u8) -> () {
         if *addr < 0x2000 {
-            // pattern memory, this is probably ROM
+            self.tblPattern[*addr as usize] = val;
         }
         else if *addr < 0x3F00 {
-            self.ppuMem[*addr as usize] = val;
+            let mirror = self.cartridge.unwrap().borrow().getMirrorType();
+            let realAddr = *addr & 0x0FFF;
+
+            match mirror {
+                MIRROR::HORIZONTAL => {
+                    match realAddr {
+                        a if a < 0x0800 => { self.tblName[a & 0x03FF] = val; }
+                        _ => { self.tblName[realAddr & 0x0BFF] = val; }
+                    }
+                },
+                MIRROR::VERTICAL => {
+                    match realAddr {
+                        a if a < 0x0800 => { self.tblName[a] = val; }
+                        a if a < 0x0C00 => { self.tblName[a & 0x03FF] = val; }
+                        _ => { self.tblName[realAddr & 0x07FF] = val; }
+                    }
+                },
+                _ => { panic!("wat?") }
+            }
         }
         else if *addr < 0x4000 {
-            // pallete memory
+            let mut realAddr = *addr & 0x001F;
+            if realAddr % 4 == 0 { realAddr = 0; }  // fourth byte is transparent (background)
+            self.tblPalette[realAddr as usize] = val;
         }
     }
 
     pub fn readPpuMem(&self, ref addr: u16) -> u8 {
         if *addr < 0x2000 {
-            // pattern memory, this is probably ROM
+            return self.tblPattern[*addr as usize].clone();
         }
         else if *addr < 0x3F00 {
-            return self.ppuMem[*addr as usize].clone();
+            let mirror = self.cartridge.unwrap().borrow().getMirrorType();
+            let realAddr = *addr & 0x0FFF;
+
+            match mirror {
+                MIRROR::HORIZONTAL => {
+                    return match realAddr {
+                        a if a < 0x0800 => { self.tblName[a & 0x03FF] }
+                        _ => { self.tblName[realAddr & 0x0BFF] }
+                    }
+                },
+                MIRROR::VERTICAL => {
+                    return match realAddr {
+                        a if a < 0x0800 => { self.tblName[a] }
+                        a if a < 0x0C00 => { self.tblName[a & 0x03FF] }
+                        _ => { self.tblName[realAddr & 0x07FF] }
+                    }
+                },
+                _ => { panic!("wat?") }
+            }
+
+            return self.tblName[(*addr & 0x1FFF) as usize].clone();
         }
         else if *addr < 0x4000 {
-            // pallete memory
+            let mut realAddr = *addr & 0x001F;
+            if realAddr % 4 == 0 { realAddr = 0; }  // fourth byte is transparent (background)
+            return self.tblPalette[realAddr as usize].clone();
         }
         return 0;
     }
@@ -122,10 +165,6 @@ impl DataBus {
 
     pub fn triggerNMI(&mut self) -> () {
         self.cpu.unwrap().borrow_mut().setNmi();
-    }
-
-    pub fn getPaletteColour(&mut self, ref addr: u16) -> u32 {
-
     }
 
     pub fn pushStack(&mut self, stackP: &mut u8, val: u8) -> () {

@@ -10,6 +10,14 @@ use std::ptr::{slice_from_raw_parts, slice_from_raw_parts_mut};
 use crate::mapper::Mapper;
 use crate::mapper0::Mapper0;
 use std::borrow::BorrowMut;
+use crate::cartridge::MIRROR::{VERTICAL, HORIZONTAL};
+
+pub enum MIRROR {
+    HORIZONTAL,
+    VERTICAL,
+    ONESCREEN_LO,
+    ONESCREEN_HI
+}
 
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
@@ -32,7 +40,8 @@ pub struct Cartridge {
     numChrBanks: u8,
     vPrgMem: Vec<u8>,
     vChrMem: Vec<u8>,
-    pMapper: Box<dyn Mapper>
+    pMapper: Box<dyn Mapper>,
+    mirror: MIRROR
 }
 
 impl Cartridge {
@@ -91,6 +100,8 @@ impl Cartridge {
             _ => panic!("Unknown mapper: {}", mapperId)
         }
 
+        let mirror: MIRROR = if header.mapper1 & 0x01 == 1 { VERTICAL } else { HORIZONTAL };
+
         return Cartridge {
             header,
             mapperId,
@@ -98,7 +109,8 @@ impl Cartridge {
             numPrgBanks,
             vPrgMem: prgMem,
             vChrMem: chrMem,
-            pMapper: mapper.unwrap()
+            pMapper: mapper.unwrap(),
+            mirror
         }
     }
 
@@ -130,5 +142,9 @@ impl Cartridge {
         if mapAddr.is_some() {
             self.vChrMem[mapAddr.unwrap() as usize] = val;
         }
+    }
+
+    pub fn getMirrorType(&self) -> &MIRROR {
+        return &self.mirror;
     }
 }
