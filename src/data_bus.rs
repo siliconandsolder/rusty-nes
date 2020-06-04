@@ -61,6 +61,12 @@ impl DataBus {
         else if *addr == 0x4014 {   // special case for OAM writes
             self.ppu.as_ref().unwrap().borrow_mut().writeMem(*addr, val);
         }
+        else if *addr == 0x4016 {
+            // controller one stuff goes here
+        }
+        else if *addr == 0x4017 {
+            // controller two stuff goes here
+        }
         else {
             self.cartridge.as_ref().unwrap().borrow_mut().cpuWrite(*addr, val);
         }
@@ -73,6 +79,14 @@ impl DataBus {
         else if *addr >= 0x2000 && *addr <= 0x3FFF {
             return self.ppu.as_ref().unwrap().borrow_mut().readMem(*addr).clone();
         }
+        else if *addr == 0x4016 {
+            // controller one stuff goes here
+            return 0;
+        }
+        else if *addr == 0x4017 {
+            // controller two stuff goes here
+            return 0;
+        }
         else {
             return self.cartridge.as_ref().unwrap().borrow_mut().cpuRead(*addr);
         }
@@ -83,21 +97,21 @@ impl DataBus {
             self.tblPattern[*addr as usize] = val;
         }
         else if *addr < 0x3F00 {
-            let mirror = self.cartridge.unwrap().borrow().getMirrorType();
+            let cart = self.cartridge.as_ref().unwrap();
             let realAddr = *addr & 0x0FFF;
 
-            match mirror {
+            match cart.borrow().getMirrorType() {
                 MIRROR::HORIZONTAL => {
                     match realAddr {
-                        a if a < 0x0800 => { self.tblName[a & 0x03FF] = val; }
-                        _ => { self.tblName[realAddr & 0x0BFF] = val; }
+                        a if a < 0x0800 => { self.tblName[(a & 0x03FF) as usize] = val; }
+                        _ => { self.tblName[(realAddr & 0x0BFF) as usize] = val; }
                     }
                 },
                 MIRROR::VERTICAL => {
                     match realAddr {
-                        a if a < 0x0800 => { self.tblName[a] = val; }
-                        a if a < 0x0C00 => { self.tblName[a & 0x03FF] = val; }
-                        _ => { self.tblName[realAddr & 0x07FF] = val; }
+                        a if a < 0x0800 => { self.tblName[a as usize] = val; }
+                        a if a < 0x0C00 => { self.tblName[(a & 0x03FF) as usize] = val; }
+                        _ => { self.tblName[(realAddr & 0x07FF) as usize] = val; }
                     }
                 },
                 _ => { panic!("wat?") }
@@ -115,21 +129,21 @@ impl DataBus {
             return self.tblPattern[*addr as usize].clone();
         }
         else if *addr < 0x3F00 {
-            let mirror = self.cartridge.unwrap().borrow().getMirrorType();
+            let cart = self.cartridge.as_ref().unwrap();
             let realAddr = *addr & 0x0FFF;
 
-            match mirror {
+            match cart.borrow().getMirrorType() {
                 MIRROR::HORIZONTAL => {
                     return match realAddr {
-                        a if a < 0x0800 => { self.tblName[a & 0x03FF] }
-                        _ => { self.tblName[realAddr & 0x0BFF] }
+                        a if a < 0x0800 => { self.tblName[(a & 0x03FF) as usize] }
+                        _ => { self.tblName[(realAddr & 0x0BFF) as usize] }
                     }
                 },
                 MIRROR::VERTICAL => {
                     return match realAddr {
-                        a if a < 0x0800 => { self.tblName[a] }
-                        a if a < 0x0C00 => { self.tblName[a & 0x03FF] }
-                        _ => { self.tblName[realAddr & 0x07FF] }
+                        a if a < 0x0800 => { self.tblName[a as usize] }
+                        a if a < 0x0C00 => { self.tblName[(a & 0x03FF) as usize] }
+                        _ => { self.tblName[(realAddr & 0x07FF) as usize] }
                     }
                 },
                 _ => { panic!("wat?") }
@@ -155,16 +169,11 @@ impl DataBus {
 
     pub fn overWriteOam(&mut self, val: u8) -> () {
         let cpuAddr: u16 = (val << 16) as u16;
-
-        for i in 0..256 {
-            self.oamMem[i] = self.cpuMem[cpuAddr as usize + i].clone();
-        }
-
-        self.cpu.as_ref().unwrap().borrow_mut().addOamCycles();
+        self.cpu.as_ref().unwrap().borrow_mut().triggerOamTransfer(cpuAddr);
     }
 
     pub fn triggerNMI(&mut self) -> () {
-        self.cpu.unwrap().borrow_mut().setNmi();
+        self.cpu.as_ref().unwrap().borrow_mut().setNmi();
     }
 
     pub fn pushStack(&mut self, stackP: &mut u8, val: u8) -> () {

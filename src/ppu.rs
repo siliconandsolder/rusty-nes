@@ -15,7 +15,7 @@ const SCANLINE_MAX: u16 = 261;
 
 const CYCLE_MAX: u16 = 340;
 
-const CYCLES_PER_FRAME: u16 = 89342;
+const CYCLES_PER_FRAME: u32 = 89342;
 
 pub struct Ppu {
     cycle: u16,
@@ -25,8 +25,14 @@ pub struct Ppu {
     isOddFrame: bool,
 
     v: u16,     // vram address
-    t: u16,     // temp vram address
-    x: u8,      // x scroll
+    t: u16,    /* temp vram address
+             0x0yyy NN YYYYY XXXXX
+                ||| || ||||| +++++-- coarse X scroll
+                ||| || +++++-------- coarse Y scroll
+                ||| ++-------------- nametable select
+                +++----------------- fine Y scroll
+                */
+    x: u8,      // fine x scroll
     w: u8,      // write toggle
     f: u8,      // frame is even or odd
     prevReg: u8,
@@ -39,8 +45,16 @@ pub struct Ppu {
     canTrigNmi: bool,
 
     // shift registers
-    // tileShiftReg1: u16,
-    // tileShiftReg2: u16,
+    bgShiftPatLo: u16,
+    bgShiftPatHi: u16,
+    bgShiftAttrLo: u16,
+    bgShiftAttrHi: u16,
+
+    // tile info
+    bgTileId: u8,
+    bgTileAttr: u8,
+    bgTileLsb: u8,
+    bgTileMsb: u8,
 
 
     // flags
@@ -81,12 +95,12 @@ impl Clocked for Ppu {
         if self.scanLine == SCANLINE_MAX && self.cycle == 1 {
             self.fSprZero = 0;
             self.nmiOccured = false;
-            self.canTrigNmi = false;
+            self.canTrigNmi = true;
         }
 
-        if self.fNmi == 1 && self.nmiOccured && !self.canTrigNmi {
+        if self.fNmi == 1 && self.nmiOccured && self.canTrigNmi {
             self.memory.borrow_mut().triggerNMI();
-            self.canTrigNmi = true;
+            self.canTrigNmi = false;
         }
 
         if self.cycle >= 257 && self.cycle <= 320 {
@@ -94,25 +108,68 @@ impl Clocked for Ppu {
         }
 
         if renderEnabled {
-           match self.cycle {
-               256 => {
-                   self.incrementY();
-               },
-               257 => {
-                   self.v = (self.v & 0b0111101111100000) | (self.t & 0b0000010000011111);
-               },
-               280...304 => {
-                   if self.scanLine == SCANLINE_MAX {
-                       self.v = (self.v & 0b0000010000011111) | (self.t & 0b0111101111100000);
-                   }
-               },
-               c if c > 327 || c < 257 => {
-                   if self.cycle % 8 == 0 && self.cycle != 0 {
-                       self.incrementX();
-                   }
-               },
-               _=> {}
-           }
+            if self.cycle < 257 || (self.cycle > 320 && self.cycle < 337) {
+
+                let vAddr = self.v.clone();
+                match (self.cycle - 1) % 8 {
+                    0 => {
+                        self.loadBackgroundShiftRegisters();
+                        self.bgTileId = self.memory.borrow_mut().readPpuMem(
+                            0x2000 | (vAddr & 0x0FFF)
+                        );
+                    },
+                    2 => {
+                        self.bgTileAttr = self.memory.borrow_mut().readPpuMem(
+                            0x23C0 | (vAddr & 0x0C00) | ((vAddr >> 4) & 0x38) | ((vAddr >> 2) & 0x07)
+                        );
+                    },
+                    4 => {
+                        self.bgTileLsb = self.memory.borrow_mut().readPpuMem(
+                            (self.fBckTile << 12) as u16 +
+                                (self.bgTileId << 4) as u16 +
+                                vAddr >> 12
+                        );
+                    },
+                    6 => {
+                        self.bgTileMsb = self.memory.borrow_mut().readPpuMem(
+                            (self.fBckTile << 12) as u16 +
+                                (self.bgTileId << 4) as u16 +
+                                (vAddr >> 12) + 8
+                        );
+                    },
+                    7 => {
+                        self.incrementX();
+                    },
+                    _ => {}
+                }
+            }
+
+            match self.cycle {
+                256 => {
+                    self.incrementY();
+                },
+                257 => {
+                    // copy nametable x and coarse x
+                    self.v = (self.v & 0b0111101111100000) | (self.t & 0b0000010000011111);
+                },
+                280...304 => {
+                    if self.scanLine == SCANLINE_MAX {
+                        // copy fine y, nametable y, and coarse y to vram address
+                        self.v = (self.v & 0b0000010000011111) | (self.t & 0b0111101111100000);
+                    }
+                },
+                _=> {}
+            }
+        }
+
+        let mut bgPixel: u8 = 0x0000;
+        let mut bgPallete: u8 = 0x0000;
+
+        if self.fBckEnabled == 1 {
+            let mux: u16 = 0x8000 >> self.x as u16;
+
+            bgPixel = (((self.bgShiftPatHi & mux) & 1) as u8) << 1 | ((self.bgShiftPatLo & mux) & 1) as u8;
+            bgPallete = (((self.bgShiftAttrHi & mux) & 1) as u8) << 1 | ((self.bgShiftAttrLo & mux) & 1) as u8;
         }
 
 
@@ -122,13 +179,10 @@ impl Clocked for Ppu {
             self.cycle = 0;
 
             self.scanLine += 1;
-            if self.scanLine > SCANLINE_MAX { self.scanLine = 0; }
-        }
-
-        self.frameCycles += 1;
-        if self.frameCycles % CYCLES_PER_FRAME == 0 {
-            self.isOddFrame = !self.isOddFrame;
-            self.frameCycles = 0;
+            if self.scanLine > SCANLINE_MAX {
+                self.scanLine = 0;
+                self.isOddFrame = !self.isOddFrame;
+            }
         }
     }
 }
@@ -150,6 +204,14 @@ impl Ppu {
             bufData: 0,
             nmiOccured: false,
             canTrigNmi: false,
+            bgShiftPatLo: 0,
+            bgShiftPatHi: 0,
+            bgShiftAttrLo: 0,
+            bgShiftAttrHi: 0,
+            bgTileId: 0,
+            bgTileAttr: 0,
+            bgTileLsb: 0,
+            bgTileMsb: 0,
             fNameTable: 0,
             fIncMode: 0,
             fSprTile: 0,
@@ -285,8 +347,8 @@ impl Ppu {
     fn ppuDataRead(&mut self) -> u8 {
 
         let mut tempBufData: u8 = 0;
-        let vPtr = self.v;
-        let mut ppuData = self.memory.borrow().readPpuMem(vPtr);
+        let vPtr = &self.v;
+        let mut ppuData = self.memory.borrow().readPpuMem(*vPtr);
 
         if self.v < 0x3F00 {
             tempBufData = self.bufData;
@@ -295,7 +357,7 @@ impl Ppu {
         }
         else {
             // maps to nametable under the palette (palette address minus 0x1000)
-            self.bufData = self.memory.borrow().readPpuMem(vPtr - 0x1000);
+            self.bufData = self.memory.borrow().readPpuMem(*vPtr - 0x1000);
         }
 
         self.v = if self.fIncMode == 0 { self.v.wrapping_add(1) } else { self.v.wrapping_add(32) };
@@ -335,6 +397,23 @@ impl Ppu {
                 y += 1;
             }
             self.v = (self.v & !0x03E0) | (y << 5);
+        }
+    }
+
+    fn loadBackgroundShiftRegisters(&mut self) -> () {
+        self.bgShiftPatLo &= 0xFF00 | self.bgTileLsb as u16;
+        self.bgShiftPatHi &= 0xFF00 | self.bgTileMsb as u16;
+
+        self.bgShiftAttrLo &= 0xFF00 | if self.bgTileAttr & 0x01 == 1 { 0x00FF } else { 0x0000 };
+        self.bgShiftAttrHi &= 0xFF00 | if self.bgTileAttr & 0x10 == 1 { 0x00FF } else { 0x0000 };
+    }
+
+    fn updateShiftRegisters(&mut self) -> () {
+        if self.fBckEnabled == 1 {
+            self.bgShiftPatLo <<= 1;
+            self.bgShiftPatHi <<= 1;
+            self.bgShiftAttrLo <<= 1;
+            self.bgShiftAttrHi <<= 1;
         }
     }
 

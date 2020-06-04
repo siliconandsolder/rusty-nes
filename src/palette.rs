@@ -1,3 +1,6 @@
+#![allow(non_snake_case)]
+#![allow(warnings)]
+
 struct PaletteColour {
 	pub red: u8,
 	pub green: u8,
@@ -5,7 +8,7 @@ struct PaletteColour {
 }
 
 impl PaletteColour {
-	pub fn new(red: u8, green: u8, blue: u8) -> Self {
+	pub const fn new(red: u8, green: u8, blue: u8) -> Self {
 		PaletteColour {
 			red,
 			green,

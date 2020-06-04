@@ -285,13 +285,29 @@ pub struct Cpu {
     waitCycles: u16,
 
     triggerNmi: bool,
-    triggerIrq: bool
+    triggerIrq: bool,
+
+    // OAM transfer variables
+    isOamTransfer: bool,
+    isOamStarted: bool,
+    oamByte: u8,
+    oamPage: u16,
+    oamCycles: u16,
 }
 
 impl Clocked for Cpu {
     fn cycle(&mut self) {
 
-        // check for oam pause (514 cycles)
+        if self.isOamTransfer {
+
+            // wait for one cycle if not an even cycle
+            if !self.isOamStarted && self.waitCycles % 2 != 0 {
+                self.isOamStarted = true;
+                return;
+            }
+
+            self.doOamTransfer();
+        }
 
         if self.waitCycles != 0 {
             self.waitCycles -= 1;
@@ -339,7 +355,12 @@ impl Cpu {
             flags: Flags::new(),
             waitCycles: 0,
             triggerIrq: false,
-            triggerNmi: false
+            triggerNmi: false,
+            isOamTransfer: false,
+            isOamStarted: false,
+            oamByte: 0,
+            oamPage: 0,
+            oamCycles: 0
         };
 
         cpu.setFlags(0x24);
@@ -423,13 +444,40 @@ impl Cpu {
         }
     }
 
-    pub fn addOamCycles(&mut self) -> () {
-        if self.waitCycles % 2 == 0 {
-            self.waitCycles += 514;
+    pub fn triggerOamTransfer(&mut self, pageAddr: u16) -> () {
+        self.isOamTransfer = true;
+        self.oamPage = pageAddr;
+    }
+
+    fn doOamTransfer(&mut self) -> () {
+
+        // read and write on alternating cycles
+        if self.oamCycles % 2 == 0 {
+            let page = self.oamPage;
+            self.oamByte = self.readMem8(page);
         }
         else {
-            self.waitCycles += 513;
+            let oamAddr = (self.oamPage & 0x00FF) as u8;
+            let byte = self.oamByte;
+            self.memory.borrow_mut().writeOam(oamAddr, byte);
+            self.oamPage = self.oamPage.wrapping_add(1);
+
+            // we've stepped into the next page of memory
+            if self.oamPage & 0x00FF == 0 {
+                self.resetOamState();
+                return;
+            }
         }
+
+        self.oamCycles += 1;
+    }
+
+    fn resetOamState(&mut self) -> () {
+        self.isOamTransfer = false;
+        self.isOamStarted = false;
+        self.oamByte = 0;
+        self.oamPage = 0;
+        self.oamCycles = 0;
     }
 
     fn nmi(&mut self) -> () {
