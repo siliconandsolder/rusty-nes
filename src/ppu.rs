@@ -44,17 +44,29 @@ pub struct Ppu {
     nmiOccured: bool,
     canTrigNmi: bool,
 
-    // shift registers
+    // background shift registers
     bgShiftPatLo: u16,
     bgShiftPatHi: u16,
     bgShiftAttrLo: u16,
     bgShiftAttrHi: u16,
 
-    // tile info
+    // sprite shift registers
+    sprShiftPatLo: Vec<u8>,
+    sprShiftPatHi: Vec<u8>,
+
+    // background tile info
     bgTileId: u8,
     bgTileAttr: u8,
     bgTileLsb: u8,
     bgTileMsb: u8,
+
+    // sprite info
+    vSpriteLine: Vec<u8>,
+    spriteLineCount: u8,
+
+    // sprite zero info
+    isZeroHitPossible: bool,
+    isZeroBeingRendered: bool,
 
 
     // flags
@@ -96,6 +108,15 @@ impl Clocked for Ppu {
             self.fSprZero = 0;
             self.nmiOccured = false;
             self.canTrigNmi = true;
+
+            // wipe sprites for next scanline
+            self.fSprOver = 0;
+            for i in 0..8 {
+                self.sprShiftPatLo[i] = 0;
+                self.sprShiftPatHi[i] = 0;
+            }
+
+            self.fSprZero = 0;
         }
 
         if self.fNmi == 1 && self.nmiOccured && self.canTrigNmi {
@@ -108,7 +129,16 @@ impl Clocked for Ppu {
         }
 
         if renderEnabled {
-            if self.cycle < 257 || (self.cycle > 320 && self.cycle < 337) {
+            if self.cycle < 258 || (self.cycle > 320 && self.cycle < 337) {
+
+                if self.fBckEnabled == 1 {
+                    self.updateBackgroundShiftRegisters();
+                }
+
+                if self.fSprEnabled == 1 && self.cycle < 248 {
+                    self.updateSpriteShiftRegisters();
+                }
+
 
                 let vAddr = self.v.clone();
                 match (self.cycle - 1) % 8 {
@@ -151,11 +181,117 @@ impl Clocked for Ppu {
                 257 => {
                     // copy nametable x and coarse x
                     self.v = (self.v & 0b0111101111100000) | (self.t & 0b0000010000011111);
+
+                    if self.scanLine != SCANLINE_MAX {
+
+                        for i in &mut self.vSpriteLine { *i = 0; }
+                        self.spriteLineCount = 0;
+                        let mut oamIdx: u8 = 0;
+                        self.isZeroBeingRendered = false;
+
+                        while oamIdx < 64 && self.spriteLineCount < 9 {
+                            let oamY: u8 = self.memory.borrow_mut().readOam(oamIdx * 4);
+                            let spriteSize: u8 = if self.fSprHeight == 0 { 8 } else { 16 };
+
+                            let mut diff: i16 = self.scanLine as i16 - oamY as i16;
+                            // the sprite will be rendered on the next scanline!
+                            if diff > -1 && diff < spriteSize as i16 {
+                                // copy oam entry into scanline vector
+                                // increment sprite count
+                                if self.spriteLineCount < 8 {
+
+                                    if oamIdx == 0 { self.isZeroHitPossible = true; }
+
+                                    for i in 0..=3 {
+                                        self.vSpriteLine[(self.spriteLineCount.clone() * 4 + i) as usize] = self.memory.borrow_mut().readOam(oamIdx * 4 + i)
+                                    }
+                                    self.spriteLineCount += 1;
+                                }
+                            }
+                            oamIdx += 1;
+                        }
+                        if self.spriteLineCount > 8 { self.fSprOver = 1 };
+                    }
                 },
-                280...304 => {
+                280..=304 => {
                     if self.scanLine == SCANLINE_MAX {
                         // copy fine y, nametable y, and coarse y to vram address
                         self.v = (self.v & 0b0000010000011111) | (self.t & 0b0111101111100000);
+                    }
+                },
+                340 => {
+                    // behold: sprite logic!
+                    for i in 0..self.spriteLineCount {
+                        let mut sprPatBitsLo: u8 = 0;
+                        let mut sprPatBitsHi: u8 = 0;
+                        let mut sprPatAddrLo: u16 = 0;
+                        let mut sprPatAddrHi: u16 = 0;
+
+                        if self.fSprHeight == 0 {
+                            // is the sprite flipped vertically?
+                            if self.vSpriteLine[(i * 4 + 2) as usize] & 0x80 == 0 {    // no
+                                sprPatAddrLo = (self.fSprTile << 12) as u16 // get pattern table address (left half or right half)
+                                                | (self.vSpriteLine[(i * 4 + 1) as usize].clone() << 4) as u16 // tile id multiplied by 16 to get pattern table byte (pattern table tiles are 16 bytes)
+                                                | (self.scanLine - self.vSpriteLine[(i * 4) as usize].clone() as u16) as u16; // row offset of tile
+                            }
+                            else {  // yes
+                                sprPatAddrLo = (self.fSprTile << 12) as u16 // get pattern table address (left half or right half)
+                                    | (self.vSpriteLine[(i * 4 + 1) as usize].clone() << 4) as u16 // tile id multiplied by 16 to get pattern table byte (pattern table tiles are 16 bytes)
+                                    | (7 - (self.scanLine - self.vSpriteLine[(i * 4) as usize].clone() as u16)) as u16; // row offset of tile
+                            }
+                        }
+                        else {
+                            if self.vSpriteLine[(i * 4 + 2) as usize] & 0x80 == 0 {
+                                // top half of the sprite
+                                if (self.scanLine - self.vSpriteLine[(i * 4) as usize] as u16) < 8 {
+                                    sprPatAddrLo = ((self.vSpriteLine[(i * 4 + 1) as usize] as u16 & 1 << 12) as u16)
+                                        | ((self.vSpriteLine[(i * 4 + 1) as usize] & 0xFE << 4) as u16) // LSB is ignored when fetching tile ID
+                                        | ((self.scanLine - self.vSpriteLine[(i * 4) as usize] as u16) & 0x07) as u16;
+                                }
+                                else {
+                                    // bottom half of the sprite
+                                    sprPatAddrLo = ((self.vSpriteLine[(i * 4 + 1) as usize] as u16 & 1 << 12) as u16)
+                                        | (((self.vSpriteLine[(i * 4 + 1) as usize] & 0xFE + 1) << 4) as u16) // LSB is ignored when fetching tile ID
+                                        | ((self.scanLine - self.vSpriteLine[(i * 4) as usize] as u16) & 0x07) as u16;
+                                }
+                            }
+                            else {
+                                // top half of the sprite
+                                if (self.scanLine - self.vSpriteLine[(i * 4) as usize] as u16) < 8 {
+                                    sprPatAddrLo = ((self.vSpriteLine[(i * 4 + 1) as usize] as u16 & 1 << 12) as u16)
+                                        | (((self.vSpriteLine[(i * 4 + 1) as usize] & 0xFE + 1) << 4) as u16) // LSB is ignored when fetching tile ID
+                                        | (7 - (self.scanLine - self.vSpriteLine[(i * 4) as usize] as u16) & 0x07) as u16;
+                                }
+                                else {
+                                    // bottom half of the sprite
+                                    sprPatAddrLo = ((self.vSpriteLine[(i * 4 + 1) as usize] as u16 & 1 << 12) as u16)
+                                        | ((self.vSpriteLine[(i * 4 + 1) as usize] & 0xFE << 4) as u16) // LSB is ignored when fetching tile ID
+                                        | (7 - (self.scanLine - self.vSpriteLine[(i * 4) as usize] as u16) & 0x07) as u16;
+                                }
+                            }
+                        }
+
+                        sprPatAddrHi = sprPatAddrLo + 8;
+                        sprPatBitsLo = self.memory.borrow_mut().readPpuMem(sprPatAddrLo);
+                        sprPatBitsHi = self.memory.borrow_mut().readPpuMem(sprPatAddrHi);
+
+                        // flip sprite horizontally
+                        if self.vSpriteLine[(i * 4 + 2) as usize] & 0x40 == 1 {
+
+                            let horizontalFlipper = |mut byte: u8| -> u8 {
+                                byte = (byte & 0xF0) >> 4 | (byte & 0x0F) << 4;
+                                byte = (byte & 0xCC) >> 2 | (byte & 0x33) << 2;
+                                byte = (byte & 0xAA) >> 1 | (byte & 0x55) << 1;
+                                byte
+                            };
+
+                            sprPatBitsHi = horizontalFlipper(sprPatBitsHi);
+                            sprPatBitsLo = horizontalFlipper(sprPatBitsLo);
+                        }
+
+                        // finally load the bits into the shift registers
+                        self.sprShiftPatHi[i as usize] = sprPatBitsHi;
+                        self.sprShiftPatLo[i as usize] = sprPatBitsLo;
                     }
                 },
                 _=> {}
@@ -172,6 +308,86 @@ impl Clocked for Ppu {
             bgPallete = (((self.bgShiftAttrHi & mux) & 1) as u8) << 1 | ((self.bgShiftAttrLo & mux) & 1) as u8;
         }
 
+        let mut sprPixel: u8 = 0;
+        let mut sprPallete: u8 = 0;
+        let mut sprPriority: u8 = 0;
+
+        if self.fSprEnabled == 1 {
+            for i in 0..self.spriteLineCount {
+                if self.vSpriteLine[(i * 4 + 3) as usize] == 0 {
+
+                    sprPixel = ((self.sprShiftPatHi[i as usize] & 0x80) & 1) << 1 | ((self.sprShiftPatLo[i as usize] & 0x80) & 1);
+
+                    // first four palette entries reserved for background colours
+                    sprPallete = (self.vSpriteLine[(i * 4 + 2) as usize] & 0x03) + 0x04;
+                    // priority over background (1 means priority)
+                    sprPriority = (self.vSpriteLine[(i * 4 + 2) as usize] & 0x20) ^ 1;
+
+                    if sprPriority == 1 {
+                        if i == 0 { self.isZeroBeingRendered = true; }
+                        break; // lower indexes are higher priority, meaning no successive sprite can trump this one.
+                    }
+                }
+            }
+        }
+
+        // combine the background and foreground pixels
+        let mut pixel: u8 = 0;
+        let mut palette: u8 = 0;
+
+        match bgPixel {
+            0 => {
+                match sprPixel {
+                    1 => {
+                        pixel = sprPixel;
+                        palette = sprPallete;
+                    }
+                    _ => {}
+                }
+            },
+            1 => {
+                match sprPixel {
+                    0 => {
+                        pixel = bgPixel;
+                        palette = bgPallete;
+                    }
+                    _ => {
+                        match sprPriority {
+                            0 => {
+                                pixel = bgPixel;
+                                palette = bgPallete;
+                            },
+                            _ => {
+                                pixel = sprPixel;
+                                palette = sprPallete;
+                            }
+                        }
+
+                        // if we're rendering sprite zero, and both the background and sprites,
+                        // we can have a zero hit
+                        if self.isZeroBeingRendered && self.isZeroHitPossible
+                            && self.fBckEnabled == 1 && self.fSprEnabled == 1 {
+
+                            // we're not rendering the left-most 8 pixels, so
+                            // only generate a hit after the first 8 pixels
+                            if (self.fBckLeft | self.fSprLeft) == 0 {
+                               if self.cycle > 8 && self.cycle < 258 {
+                                   self.fSprZero = 1;
+                               }
+                            }
+                            else {
+                                if self.cycle > 0 && self.cycle < 258 {
+                                    self.fSprZero = 1;
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            _ => {}
+        }
+
+        // call draw function here
 
         // increment cycle and scanline
         self.cycle += 1;
@@ -208,10 +424,16 @@ impl Ppu {
             bgShiftPatHi: 0,
             bgShiftAttrLo: 0,
             bgShiftAttrHi: 0,
+            sprShiftPatLo: vec![0; 0x0008],
+            sprShiftPatHi: vec![0; 0x0008],
             bgTileId: 0,
             bgTileAttr: 0,
             bgTileLsb: 0,
             bgTileMsb: 0,
+            vSpriteLine: vec![0; 0x0020],
+            spriteLineCount: 0,
+            isZeroHitPossible: false,
+            isZeroBeingRendered: false,
             fNameTable: 0,
             fIncMode: 0,
             fSprTile: 0,
@@ -408,12 +630,24 @@ impl Ppu {
         self.bgShiftAttrHi &= 0xFF00 | if self.bgTileAttr & 0x10 == 1 { 0x00FF } else { 0x0000 };
     }
 
-    fn updateShiftRegisters(&mut self) -> () {
-        if self.fBckEnabled == 1 {
-            self.bgShiftPatLo <<= 1;
-            self.bgShiftPatHi <<= 1;
-            self.bgShiftAttrLo <<= 1;
-            self.bgShiftAttrHi <<= 1;
+    fn updateBackgroundShiftRegisters(&mut self) -> () {
+        self.bgShiftPatLo <<= 1;
+        self.bgShiftPatHi <<= 1;
+        self.bgShiftAttrLo <<= 1;
+        self.bgShiftAttrHi <<= 1;
+
+    }
+
+    fn updateSpriteShiftRegisters(&mut self) -> () {
+        for i in 0..self.spriteLineCount {
+            // only shift when scanline has hit the start of the sprite
+            if self.vSpriteLine[(i * 4 + 3) as usize] > 0 {
+                self.vSpriteLine[(i * 4 + 3) as usize] -= 1;
+            }
+            else {
+                self.sprShiftPatLo[i as usize] <<= 1;
+                self.sprShiftPatHi[i as usize] <<= 1;
+            }
         }
     }
 
