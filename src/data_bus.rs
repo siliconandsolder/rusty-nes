@@ -1,22 +1,19 @@
 #![allow(non_snake_case)]
 #![allow(warnings)]
+#![allow(exceeding_bitshifts)]
 
 use std::rc::Rc;
 use std::cell::RefCell;
+use log::info;
 use crate::cpu::*;
 use crate::ppu::*;
 use crate::cartridge::{Cartridge, MIRROR};
 use crate::palette::*;
 
+// Split the buses in two. One for CPU-PPU intercommunication, one for PPU data reads and writes.
 
 pub struct DataBus {
     cpuMem: Vec<u8>,
-    ppuMem: Vec<u8>,
-    tblPalette: Vec<u8>,
-    tblName: Vec<u8>,
-    tblPattern: Vec<u8>,
-    oamMem: Vec<u8>,
-    interruptMem: Vec<u8>,
 
     cpu: Option<Rc<RefCell<Cpu>>>,
     ppu: Option<Rc<RefCell<Ppu>>>,
@@ -27,12 +24,6 @@ impl DataBus {
     pub fn new() -> DataBus {
         DataBus {
             cpuMem: vec![0; 0x0800],
-            ppuMem: vec![0; 0x0008],
-            tblPalette: vec![0; 0x0020],
-            tblName: vec![0; 0x1000],
-            tblPattern: vec![0; 0x1000],
-            oamMem: vec![0; 0x0100],
-            interruptMem: vec![0; 0x0006],
             cpu: None,
             ppu: None,
             cartridge: None
@@ -55,11 +46,9 @@ impl DataBus {
         if *addr < 0x2000 {
             self.cpuMem[(*addr & 0x07FF) as usize] = val;
         }
-        else if *addr >= 0x2000 && *addr <= 0x3FFF {
+        else if *addr < 0x4000 {
+            info!("Calling register: {} with value {}", *addr & 0007, val);
             self.ppu.as_ref().unwrap().borrow_mut().writeMem(*addr & 0x0007, val);
-        }
-        else if *addr == 0x4014 {   // special case for OAM writes
-            self.ppu.as_ref().unwrap().borrow_mut().writeMem(*addr, val);
         }
         else if *addr == 0x4016 {
             // controller one stuff goes here
@@ -76,8 +65,8 @@ impl DataBus {
         if *addr < 0x2000 {
             return self.cpuMem[(*addr & 0x07FF) as usize].clone();
         }
-        else if *addr >= 0x2000 && *addr <= 0x3FFF {
-            return self.ppu.as_ref().unwrap().borrow_mut().readMem(*addr).clone();
+        else if *addr < 0x4000 {
+            return self.ppu.as_ref().unwrap().borrow_mut().readMem(*addr & 0x0007).clone();
         }
         else if *addr == 0x4016 {
             // controller one stuff goes here
@@ -92,87 +81,11 @@ impl DataBus {
         }
     }
 
-    pub fn writePpuMem(&mut self, ref addr: u16, val: u8) -> () {
-        if *addr < 0x2000 {
-            self.tblPattern[*addr as usize] = val;
-        }
-        else if *addr < 0x3F00 {
-            let cart = self.cartridge.as_ref().unwrap();
-            let realAddr = *addr & 0x0FFF;
-
-            match cart.borrow().getMirrorType() {
-                MIRROR::HORIZONTAL => {
-                    match realAddr {
-                        a if a < 0x0800 => { self.tblName[(a & 0x03FF) as usize] = val; }
-                        _ => { self.tblName[(realAddr & 0x0BFF) as usize] = val; }
-                    }
-                },
-                MIRROR::VERTICAL => {
-                    match realAddr {
-                        a if a < 0x0800 => { self.tblName[a as usize] = val; }
-                        a if a < 0x0C00 => { self.tblName[(a & 0x03FF) as usize] = val; }
-                        _ => { self.tblName[(realAddr & 0x07FF) as usize] = val; }
-                    }
-                },
-                _ => { panic!("wat?") }
-            }
-        }
-        else if *addr < 0x4000 {
-            let mut realAddr = *addr & 0x001F;
-            if realAddr % 4 == 0 { realAddr = 0; }  // fourth byte is transparent (background)
-            self.tblPalette[realAddr as usize] = val;
-        }
+    pub fn cpuWriteOam(&mut self, ref addr: u8, val: u8) -> () {
+        self.ppu.as_ref().unwrap().borrow_mut().cpuWriteOam(*addr, val);
     }
 
-    pub fn readPpuMem(&self, ref addr: u16) -> u8 {
-        if *addr < 0x2000 {
-            return self.tblPattern[*addr as usize].clone();
-        }
-        else if *addr < 0x3F00 {
-            let cart = self.cartridge.as_ref().unwrap();
-            let realAddr = *addr & 0x0FFF;
-
-            match cart.borrow().getMirrorType() {
-                MIRROR::HORIZONTAL => {
-                    return match realAddr {
-                        a if a < 0x0800 => { self.tblName[(a & 0x03FF) as usize] }
-                        _ => { self.tblName[(realAddr & 0x0BFF) as usize] }
-                    }
-                },
-                MIRROR::VERTICAL => {
-                    return match realAddr {
-                        a if a < 0x0800 => { self.tblName[a as usize] }
-                        a if a < 0x0C00 => { self.tblName[(a & 0x03FF) as usize] }
-                        _ => { self.tblName[(realAddr & 0x07FF) as usize] }
-                    }
-                },
-                _ => { panic!("wat?") }
-            }
-
-            return self.tblName[(*addr & 0x1FFF) as usize].clone();
-        }
-        else if *addr < 0x4000 {
-            let mut realAddr = *addr & 0x001F;
-            if realAddr % 4 == 0 { realAddr = 0; }  // fourth byte is transparent (background)
-            return self.tblPalette[realAddr as usize].clone();
-        }
-        return 0;
-    }
-
-    pub fn writeOam(&mut self, ref addr: u8, val: u8) -> () {
-        self.oamMem[*addr as usize] = val;
-    }
-
-    pub fn readOam(&mut self, ref addr: u8) -> u8 {
-        return self.oamMem[*addr as usize].clone();
-    }
-
-    pub fn overWriteOam(&mut self, val: u8) -> () {
-        let cpuAddr: u16 = (val << 16) as u16;
-        self.cpu.as_ref().unwrap().borrow_mut().triggerOamTransfer(cpuAddr);
-    }
-
-    pub fn triggerNMI(&mut self) -> () {
+    pub fn ppuTriggerNMI(&mut self) -> () {
         self.cpu.as_ref().unwrap().borrow_mut().setNmi();
     }
 

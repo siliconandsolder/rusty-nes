@@ -1,7 +1,8 @@
 #![allow(non_snake_case)]
 #![allow(warnings)]
 
-struct PaletteColour {
+#[derive(Debug, Clone, Copy)]
+pub struct PaletteColour {
 	pub red: u8,
 	pub green: u8,
 	pub blue: u8
@@ -17,10 +18,10 @@ impl PaletteColour {
 	}
 }
 
-const PALETTE_ARRAY: [PaletteColour; 64] = [
+pub const PALETTE_ARRAY: [PaletteColour; 64] = [
 	PaletteColour::new(84, 84, 84),
 	PaletteColour::new(0, 30, 116),
-	PaletteColour::new(8, 16, 14),
+	PaletteColour::new(8, 16, 144),
 	PaletteColour::new(48, 0, 136),
 	PaletteColour::new(68, 0, 100),
 	PaletteColour::new(92, 0, 48),

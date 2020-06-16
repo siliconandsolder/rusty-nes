@@ -1,14 +1,18 @@
 #![allow(non_snake_case)]
 #![allow(warnings)]
+#![allow(exceeding_bitshifts)]
 
 use crate::data_bus::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::u8;
 use crate::clock::Clocked;
-use std::fmt::{Formatter, Error};
+use std::fmt::{Formatter, Error, Debug};
 use num_enum::TryFromPrimitive;
 use std::convert::TryFrom;
+use std::any::Any;
+use std::fs::File;
+use std::io::Write;
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -214,7 +218,13 @@ enum OpCode {
     INC_ABS_X   = 0xFE,
 
     // for testing purposes only
-    NOP_TEST    = 0xFF
+    //NOP_TEST    = 0xFF
+}
+
+impl Default for OpCode {
+    fn default() -> Self {
+        OpCode::NOP
+    }
 }
 
 #[allow(non_camel_case_types)]
@@ -229,7 +239,9 @@ enum OpMnemonic {
 const CARRY_POS: u8 = 0;
 const ZERO_POS: u8  = 1;
 const INT_POS: u8   = 2;
+const DEC_POS: u8   = 3;
 const BRK_POS: u8   = 4;
+const U_POS: u8     = 5;
 const OVER_POS: u8  = 6;
 const NEG_POS: u8   = 7;
 
@@ -239,6 +251,7 @@ struct Flags {
     interrupt: u8,
     decimal: u8,
     brk: u8,
+    unused: u8,
     overflow: u8,
     negative: u8,
 }
@@ -251,6 +264,7 @@ impl Flags {
             interrupt: 0,
             decimal: 0,
             brk: 0,
+            unused: 0,
             overflow: 0,
             negative: 0
         }
@@ -283,6 +297,7 @@ pub struct Cpu {
     // Bit 7 - (N) Negative
 
     waitCycles: u16,
+    isEvenCycle: bool,
 
     triggerNmi: bool,
     triggerIrq: bool,
@@ -293,21 +308,16 @@ pub struct Cpu {
     oamByte: u8,
     oamPage: u16,
     oamCycles: u16,
+
+    // debug
+    log: File,
+    counter: u16
 }
 
 impl Clocked for Cpu {
     fn cycle(&mut self) {
 
-        if self.isOamTransfer {
-
-            // wait for one cycle if not an even cycle
-            if !self.isOamStarted && self.waitCycles % 2 != 0 {
-                self.isOamStarted = true;
-                return;
-            }
-
-            self.doOamTransfer();
-        }
+        self.isEvenCycle = !self.isEvenCycle;
 
         if self.waitCycles != 0 {
             self.waitCycles -= 1;
@@ -317,15 +327,39 @@ impl Clocked for Cpu {
         // interrupts
         if self.triggerIrq {
             self.irq();
+            return;
         }
         else if self.triggerNmi {
             self.nmi();
+            return;
+        }
+
+        if self.isOamTransfer {
+
+            // wait for one cycle if not an even cycle
+            if !self.isOamStarted && !self.isEvenCycle {
+                self.isOamStarted = true;
+                return;
+            }
+
+            self.doOamTransfer();
+
+            if self.isOamTransfer {
+                return;
+            }
         }
 
         let mem = self.readMem8(self.pgmCounter);
-        let opCode = OpCode::try_from(mem).unwrap();
-        let (opMn, addrMode, cycles, xCycles, bytes) = self.getOpCodeInfo(opCode);
+        let opCode = OpCode::try_from(mem).unwrap_or_default();
+        let (opMn, addrMode, cycles, xCycles, _) = self.getOpCodeInfo(opCode);
         let (target, bytes, increment, boundaryCrossed) = self.getAddressInfo(opMn, addrMode, self.pgmCounter.wrapping_add(1));
+
+        // print!("PC: {:04X}, A: {:02X}, X: {:02X}, Y: {:02X}, P: {:02X}, SP: {:02X}, INST: {:?}\n",
+        //                            self.pgmCounter, self.regA, self.regX, self.regY, self.getFlagValues(), self.stkPointer, opCode);
+
+        // if self.pgmCounter == 0xC66E || self.counter == 8991 {
+        //     panic!("DONE!");
+        // }
 
         self.pgmCounter = if increment { self.pgmCounter.wrapping_add(bytes) } else { self.pgmCounter };
         self.executeInstruction(opMn, target);
@@ -333,6 +367,9 @@ impl Clocked for Cpu {
         // we add cycles so that potential interrupt cycles are not erased
         self.waitCycles += cycles as u16;
         if boundaryCrossed { self.waitCycles += xCycles as u16; }
+
+        // debug print
+
     }
 }
 
@@ -341,9 +378,10 @@ impl Cpu {
     pub fn new (memory: Rc<RefCell<DataBus>>) -> Cpu {
 
         // load reset vector into program counter
-        let lo: u16 = memory.borrow().readCpuMem(0xFFFC) as u16;
-        let hi: u16 = memory.borrow().readCpuMem(0xFFFD) as u16;
-        let prgC: u16 = hi << 8 + lo;
+        let lo = memory.borrow().readCpuMem(0xFFFC);
+        let hi = memory.borrow().readCpuMem(0xFFFD);
+        let prgC = ((hi as u16) << 8) + (lo as u16);
+
 
         let mut cpu = Cpu {
             regA: 0,
@@ -360,7 +398,10 @@ impl Cpu {
             isOamStarted: false,
             oamByte: 0,
             oamPage: 0,
-            oamCycles: 0
+            oamCycles: 0,
+            log: File::create("log.txt").unwrap(),
+            counter: 0,
+            isEvenCycle: false
         };
 
         cpu.setFlags(0x24);
@@ -459,7 +500,7 @@ impl Cpu {
         else {
             let oamAddr = (self.oamPage & 0x00FF) as u8;
             let byte = self.oamByte;
-            self.memory.borrow_mut().writeOam(oamAddr, byte);
+            self.memory.borrow_mut().cpuWriteOam(oamAddr, byte);
             self.oamPage = self.oamPage.wrapping_add(1);
 
             // we've stepped into the next page of memory
@@ -584,8 +625,8 @@ impl Cpu {
         let val = self.readMem8(target.unwrap());
         self.flags.zero = if self.regA & val == 0 {1} else {0};
 
-        self.flags.overflow = if val & (1 << 6) == (1 << 6) {1} else {0};
-        self.flags.negative = if val & (1 << 7) == (1 << 7) {1} else {0};
+        self.flags.overflow = (val >> 6);
+        self.flags.negative = (val >> 7);
     }
 
     fn bne(&mut self, target: Option<u16>) -> () {
@@ -651,8 +692,11 @@ impl Cpu {
         if self.regA >= val {
             self.flags.carry = 1;
         }
+        else {
+            self.flags.carry = 0;
+        }
 
-        self.setZNFlag(self.regA - val);
+        self.setZNFlag(self.regA.wrapping_sub(val));
     }
 
     fn cpx(&mut self, target: Option<u16>) -> () {
@@ -660,8 +704,11 @@ impl Cpu {
         if self.regX >= val {
             self.flags.carry = 1;
         }
+        else {
+            self.flags.carry = 0;
+        }
 
-        self.setZNFlag(self.regX - val);
+        self.setZNFlag(self.regX.wrapping_sub(val));
     }
 
     fn cpy(&mut self, target: Option<u16>) -> () {
@@ -669,8 +716,11 @@ impl Cpu {
         if self.regY >= val {
             self.flags.carry = 1;
         }
+        else {
+            self.flags.carry = 0;
+        }
 
-        self.setZNFlag(self.regY - val);
+        self.setZNFlag(self.regY.wrapping_sub(val));
     }
 
     fn dec(&mut self, target: Option<u16>) -> () {
@@ -714,7 +764,7 @@ impl Cpu {
     }
 
     fn jmp(&mut self, target: Option<u16>) -> () {
-        self.pgmCounter = self.readMem16(target.unwrap());
+        self.pgmCounter = target.unwrap();
     }
 
     fn jsr(&mut self, target: Option<u16>) -> () {
@@ -796,12 +846,14 @@ impl Cpu {
             self.flags.carry = self.regA >> 7;
             self.regA <<= 1;
             self.regA |= oldCarry;
+            self.setZNFlag(self.regA);
         }
         else {
             let mut val = self.readMem8(target.unwrap());
             self.flags.carry = val >> 7;
             val <<= 1;
             val |= oldCarry;
+            self.setZNFlag(val);
             self.writeMem8(target.unwrap(), val);
         }
     }
@@ -811,6 +863,7 @@ impl Cpu {
         if target == None {
             self.flags.carry = self.regA & 0x01;
             self.regA >>= 1;
+            self.setZNFlag(self.regA);
             self.regA |= (oldCarry << 7);
         }
         else {
@@ -818,6 +871,7 @@ impl Cpu {
             self.flags.carry = val & 0x01;
             val >>= 1;
             val |= (oldCarry << 7);
+            self.setZNFlag(val);
             self.writeMem8(target.unwrap(), val);
         }
     }
@@ -828,13 +882,13 @@ impl Cpu {
         self.setFlags(status);
         let lo = self.popStack();
         let hi = self.popStack();
-        self.pgmCounter = (hi << 8) as u16 | lo as u16;
+        self.pgmCounter = ((hi as u16) << 8) | lo as u16;
     }
     // RTS
     fn rts(&mut self, target: Option<u16>) -> () {
         let lo = self.popStack();
         let hi = self.popStack();
-        self.pgmCounter = (hi << 8) as u16 | lo as u16;
+        self.pgmCounter = ((hi as u16) << 8) | lo as u16;
         self.pgmCounter = self.pgmCounter.wrapping_add(1);
     }
 
@@ -871,6 +925,7 @@ impl Cpu {
     }
 
     fn sta(&mut self, target: Option<u16>) -> () {
+
         self.writeMem8(target.unwrap(), self.regA.clone());
     }
 
@@ -945,27 +1000,42 @@ impl Cpu {
             }
             AddressMode::Indirect => {
                 // only the JMP instruction uses this addressing mode
-                return (Some(self.readMem16(oper)), 3, false, false)
+                let orgAddr = self.readMem16(oper);
+                let lo = self.readMem8(orgAddr);
+                let hi = self.readMem8(
+                    if (orgAddr.wrapping_add(1) & 0x00FF) == 0 { orgAddr & 0xFF00 } else { orgAddr.wrapping_add(1) }
+                );
+                let target = ((hi as u16) << 8) | (lo as u16);
+
+                return (Some(target), 3, false, false)
             }
             AddressMode::IndirectIndexed => {
-                let lo = self.readMem8(oper);
-                let hi = lo.wrapping_add(1);
-                let target = ((hi as u16) << 8 | lo as u16) + self.regY as u16;
+                let zpgAddr = self.readMem8(oper);
+                let storedAddr = self.readMem16(zpgAddr as u16);
+                let target = storedAddr.wrapping_add(self.regY as u16);
 
-                return(Some(target), 2, self.pcShouldIncrement(*opCode), lo > hi);
+                return(Some(target), 2, self.pcShouldIncrement(*opCode), (storedAddr & 0x00FF) > (target & 0x00FF));
             }
             AddressMode::IndexedIndirect => {
-                let orgAddr = self.readMem8(oper);
-                let lo = orgAddr.wrapping_add(self.regX);
-                let hi = lo.wrapping_add(1);
-                let newAddr = ((hi as u16) << 8 | lo as u16);
+                let zpgAddr = self.readMem8(oper).wrapping_add(self.regX);
+                let realAddr = self.readMem16(zpgAddr as u16);
 
-                return (Some(newAddr), 2, self.pcShouldIncrement(*opCode), (orgAddr > lo || orgAddr > hi));
+                return (Some(realAddr), 2, self.pcShouldIncrement(*opCode), false);
             }
             AddressMode::Relative => {
                 // this addressing mode is only for branching instructions
-                let target = self.readMem16(oper);
-                return (Some(target), if self.branchIncrement(*opCode) {1} else {2}, true, target & 0xFF00 != oper & 0xFF00);
+                let mut jumpOffset = self.readMem8(oper);
+                let mut target: u16;
+
+                target = self.pgmCounter.wrapping_add(jumpOffset as u16);
+                target = target.wrapping_add(2); // account for opcode and operand byte
+
+                // subtract 256 if offset is supposed to be negative
+                if jumpOffset > 0x7F {
+                    target = target.wrapping_sub(0x100);
+                }
+
+                return (Some(target), 2, !self.branchIncrement(*opCode), target & 0xFF00 != (oper.wrapping_sub(1)) & 0xFF00);
             }
             AddressMode::ZeroPage => {
                 let target = self.readMem8(oper) as u16;
@@ -1011,8 +1081,13 @@ impl Cpu {
         return self.memory.borrow().readCpuMem(*addr);
     }
 
-    fn writeMem8(&self, ref addr: u16, value: u8) -> () {
-        self.memory.borrow_mut().writeCpuMem(*addr, value);
+    fn writeMem8(&mut self, ref addr: u16, value: u8) -> () {
+        // have to OAM DMA transfer here to prevent violation of borrowing rules
+        // TODO: FIX THIS
+        match *addr {
+            0x4014  => { self.triggerOamTransfer((value as u16) << 8); },
+            _ => { self.memory.borrow_mut().writeCpuMem(*addr, value); }
+        }
     }
 
     fn writeMem16(&self, ref addr: u16, value: u16) -> () {
@@ -1023,18 +1098,18 @@ impl Cpu {
     }
 
     fn pushStack(&mut self, ref value: u8) -> () {
-        self.writeMem8(STACK_IDX.wrapping_add(self.stkPointer as u16), value.clone());
-        self.stkPointer = self.stkPointer.wrapping_add(1);
+        self.writeMem8(STACK_IDX | (self.stkPointer as u16), value.clone());
+        self.stkPointer = self.stkPointer.wrapping_sub(1);
     }
 
     fn popStack(&mut self) -> u8 {
-        self.stkPointer = self.stkPointer.wrapping_sub(1);
-        return self.readMem8(STACK_IDX.wrapping_add(self.stkPointer as u16));
+        self.stkPointer = self.stkPointer.wrapping_add(1);
+        return self.readMem8(STACK_IDX | (self.stkPointer as u16));
     }
 
     fn pcShouldIncrement(&self, ref opCode: OpMnemonic) -> bool {
         match *opCode {
-            OpMnemonic::JMP | OpMnemonic::JSR | OpMnemonic::RTS => return false,
+            OpMnemonic::JMP | OpMnemonic::RTS => return false,
             _ => return true
         }
     }
@@ -1066,19 +1141,23 @@ impl Cpu {
         self.flags.carry =      (status & (1 << CARRY_POS)) >> CARRY_POS;
         self.flags.zero =       (status & (1 << ZERO_POS)) >> ZERO_POS;
         self.flags.interrupt =  (status & (1 << INT_POS)) >> INT_POS;
+        self.flags.decimal =    (status & (1 << DEC_POS)) >> DEC_POS;
         self.flags.brk =        (status & (1 << BRK_POS)) >> BRK_POS;
+        self.flags.unused =     (status & (1 << U_POS)) >> U_POS;
         self.flags.overflow =   (status & (1 << OVER_POS)) >> OVER_POS;
         self.flags.negative =   (status & (1 << NEG_POS)) >> NEG_POS;
     }
 
     fn getFlagValues(&self) -> u8 {
         let mut status: u8 = 0;
-        status |= (1 << CARRY_POS);
-        status |= (1 << ZERO_POS);
-        status |= (1 << INT_POS);
-        status |= (1 << BRK_POS);
-        status |= (1 << OVER_POS);
-        status |= (1 << NEG_POS);
+        status |= ((self.flags.carry & 1) << CARRY_POS);
+        status |= ((self.flags.zero & 1) << ZERO_POS);
+        status |= ((self.flags.interrupt & 1) << INT_POS);
+        status |= ((self.flags.decimal & 1) << DEC_POS);
+        status |= ((self.flags.brk & 1) << BRK_POS);
+        status |= ((self.flags.unused & 1) << U_POS);
+        status |= ((self.flags.overflow & 1) << OVER_POS);
+        status |= ((self.flags.negative & 1) << NEG_POS);
         return status;
     }
 
@@ -1129,8 +1208,11 @@ impl Cpu {
             OpCode::AND_ZPG =>      (OpMnemonic::AND, ZPG, 3, 0, 2),
             OpCode::ROL_ZPG =>      (OpMnemonic::ROL, ZPG, 5, 0, 2),
             OpCode::PLP =>          (OpMnemonic::PLP, IMP, 4, 0, 1),
-            OpCode::AND_IMT =>      (OpMnemonic::AND, ABS, 4, 0, 2),
-            OpCode::ROL_ACC =>      (OpMnemonic::ROL, ABS, 6, 0, 1),
+            OpCode::AND_IMT =>      (OpMnemonic::AND, IMT, 4, 0, 2),
+            OpCode::ROL_ACC =>      (OpMnemonic::ROL, ACC, 6, 0, 1),
+            OpCode::BIT_ABS =>      (OpMnemonic::BIT, ABS, 4, 0, 3),
+            OpCode::AND_ABS =>      (OpMnemonic::AND, ABS, 4, 0, 3),
+            OpCode::ROL_ABS =>      (OpMnemonic::ROL, ABS, 6, 0, 3),
 
             // 0x30
             OpCode::BMI_REL =>      (OpMnemonic::BMI, REL, 2, 1, 2),

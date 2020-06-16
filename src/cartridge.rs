@@ -12,6 +12,7 @@ use crate::mapper0::Mapper0;
 use std::borrow::BorrowMut;
 use crate::cartridge::MIRROR::{VERTICAL, HORIZONTAL};
 
+#[derive(Debug, Copy, Clone)]
 pub enum MIRROR {
     HORIZONTAL,
     VERTICAL,
@@ -22,7 +23,7 @@ pub enum MIRROR {
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
 struct Header {
-    name: [u8; 3],
+    name: [u8; 4],
     prgSize: u8,
     chrSize: u8,
     mapper1: u8,
@@ -69,7 +70,7 @@ impl Cartridge {
         let mapperId = (header.mapper2 & 0b11110000) | (header.mapper1 >> 4);
 
 
-        let fileType: u8 = 0;
+        let fileType: u8 = 1;
         let mut numPrgBanks: u8 = 0;
         let mut numChrBanks: u8 = 0;
         let mut prgMem: Vec<u8> = vec![0];
@@ -138,7 +139,7 @@ impl Cartridge {
     }
 
     pub fn ppuWrite(&mut self, ref addr: u16, val: u8) -> () {
-        let mapAddr = self.pMapper.ppuMapRead(*addr);
+        let mapAddr = self.pMapper.ppuMapWrite(*addr);
         if mapAddr.is_some() {
             self.vChrMem[mapAddr.unwrap() as usize] = val;
         }
