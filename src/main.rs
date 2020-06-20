@@ -12,13 +12,13 @@ use nes::clock::Clocked;
 use std::fs::File;
 
 fn main() {
-	CombinedLogger::init(
-		vec![
-			WriteLogger::new(LevelFilter::Info, Config::default(), File::create("rusty_logs.txt").unwrap())
-		]
-	).unwrap();
+	// CombinedLogger::init(
+	// 	vec![
+	// 		WriteLogger::new(LevelFilter::Info, Config::default(), File::create("rusty_logs.txt").unwrap())
+	// 	]
+	// ).unwrap();
 
-	let path = Path::new("./donkey_kong.nes");
+	let path = Path::new("./nestest.nes");
 	let mut console = Console::new(path);
 	console.cycle();
 

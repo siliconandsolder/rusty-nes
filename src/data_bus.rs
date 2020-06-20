@@ -47,7 +47,7 @@ impl DataBus {
             self.cpuMem[(*addr & 0x07FF) as usize] = val;
         }
         else if *addr < 0x4000 {
-            info!("Calling register: {} with value {}", *addr & 0007, val);
+            //info!("Calling register: {} with value {}", *addr & 0007, val);
             self.ppu.as_ref().unwrap().borrow_mut().writeMem(*addr & 0x0007, val);
         }
         else if *addr == 0x4016 {

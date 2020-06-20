@@ -120,13 +120,21 @@ impl Cartridge {
         if mapAddr.is_none() {
             mapAddr = Some(0);
         }
-        return self.vPrgMem[mapAddr.unwrap() as usize];
+
+        return self.vPrgMem.get(mapAddr.unwrap() as usize)
+            .unwrap_or_else(|| -> &u8 { &0 })
+            .clone();
+
     }
 
     pub fn cpuWrite(&mut self, ref addr: u16, val: u8) -> () {
         let mapAddr = self.pMapper.cpuMapWrite(*addr);
         if mapAddr.is_some() {
-            self.vPrgMem[mapAddr.unwrap() as usize] = val;
+
+            return match self.vPrgMem.get_mut(mapAddr.unwrap() as usize) {
+                Some(x) => { *x = val; }
+                _=> {}
+            };
         }
     }
 
@@ -135,13 +143,19 @@ impl Cartridge {
         if mapAddr.is_none() {
             mapAddr = Some(0);
         }
-        return self.vChrMem[mapAddr.unwrap() as usize];
+
+        return self.vChrMem.get(mapAddr.unwrap() as usize)
+            .unwrap_or_else(|| -> &u8 { &0 })
+            .clone();
     }
 
     pub fn ppuWrite(&mut self, ref addr: u16, val: u8) -> () {
         let mapAddr = self.pMapper.ppuMapWrite(*addr);
         if mapAddr.is_some() {
-            self.vChrMem[mapAddr.unwrap() as usize] = val;
+            match self.vChrMem.get_mut(mapAddr.unwrap() as usize) {
+                Some(x) => { *x = val; }
+                _=> {}
+            };
         }
     }
 
