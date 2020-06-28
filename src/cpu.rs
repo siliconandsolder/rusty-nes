@@ -53,12 +53,14 @@ enum OpCode {
     BRK         = 0x00,
     ORA_IND_X   = 0x01,
     SLO_IND_X   = 0x03,
+	NOP_ZPG_1   = 0x04,
     ORA_ZPG     = 0x05,
     ASL_ZPG     = 0x06,
     SLO_ZPG     = 0x07,
     PHP         = 0x08,
     ORA_IMT     = 0x09,
     ASL_ACC     = 0x0A,
+    NOP_ABS_1   = 0x0C,
     ORA_ABS     = 0x0D,
     ASL_ABS     = 0x0E,
     SLO_ABS     = 0x0F,
@@ -66,12 +68,15 @@ enum OpCode {
     BPL_REL     = 0x10,
     ORA_IND_Y   = 0x11,
     SLO_IND_Y   = 0x13,
+    NOP_ZPG_X_1 = 0x14,
     ORA_ZPG_X   = 0x15,
     ASL_ZPG_X   = 0x16,
     SLO_ZPG_X   = 0x17,
     CLC         = 0x18,
     ORA_ABS_Y   = 0x19,
+    NOP_1       = 0x1A,
     SLO_ABS_Y   = 0x1B,
+    NOP_ABS_X_1 = 0x1C,
     ORA_ABS_X   = 0x1D,
     ASL_ABS_X   = 0x1E,
     SLO_ABS_X   = 0x1F,
@@ -94,19 +99,23 @@ enum OpCode {
     BMI_REL     = 0x30,
     AND_IND_Y   = 0x31,
     RLA_IND_Y   = 0x33,
+    NOP_ZPG_X_2 = 0x34,
     AND_ZPG_X   = 0x35,
     ROL_ZPG_X   = 0x36,
     RLA_ZPG_X   = 0x37,
     SEC         = 0x38,
     AND_ABS_Y   = 0x39,
+    NOP_2       = 0x3A,
     RLA_ABS_Y   = 0x3B,
+    NOP_ABS_X_2 = 0x3C,
     AND_ABS_X   = 0x3D,
     ROL_ABS_X   = 0x3E,
-    RLA_ABS_X   = 0x3A,
+    RLA_ABS_X   = 0x3F,
 
     RTI         = 0x40,
     EOR_IND_X   = 0x41,
     SRE_IND_X   = 0x43,
+    NOP_ZPG_4 = 0x44,
     EOR_ZPG     = 0x45,
     LSR_ZPG     = 0x46,
     SRE_ZPG     = 0x47,
@@ -121,12 +130,15 @@ enum OpCode {
     BVC_REL     = 0x50,
     EOR_IND_Y   = 0x51,
     SRE_IND_Y   = 0x53,
+    NOP_ZPG_X_3 = 0x54,
     EOR_ZPG_X   = 0x55,
     LSR_ZPG_X   = 0x56,
     SRE_ZPG_X   = 0x57,
     CLI         = 0x58,
     EOR_ABS_Y   = 0x59,
+    NOP_4       = 0x5A,
     SRE_ABS_Y   = 0x5B,
+    NOP_ABS_X_3 = 0x5C,
     EOR_ABS_X   = 0x5D,
     LSR_ABS_X   = 0x5E,
     SRE_ABS_X   = 0x5F,
@@ -134,6 +146,7 @@ enum OpCode {
     RTS         = 0x60,
     ADC_IND_X   = 0x61,
     RRA_IND_X   = 0x63,
+    NOP_ZPG_3   = 0x64,
     ADC_ZPG     = 0x65,
     ROR_ZPG     = 0x66,
     RRA_ZPG     = 0x67,
@@ -148,23 +161,29 @@ enum OpCode {
     BVS_REL     = 0x70,
     ADC_IND_Y   = 0x71,
     RRA_IND_Y   = 0x73,
+    NOP_ZPG_X_4 = 0x74,
     ADC_ZPG_X   = 0x75,
     ROR_ZPG_X   = 0x76,
     RRA_ZPG_X   = 0x77,
     SEI         = 0x78,
     ADC_ABS_Y   = 0x79,
+    NOP_5       = 0x7A,
     RRA_ABS_Y   = 0x7B,
+    NOP_ABS_X_4 = 0x7C,
     ADC_ABS_X   = 0x7D,
     ROR_ABS_X   = 0x7E,
     RRA_ABS_X   = 0x7F,
 
+    NOP_IMM_1   = 0x80,
     STA_IND_X   = 0x81,
+    NOP_IMM_2   = 0x82,
     SAX_IND_X   = 0x83,
     STY_ZPG     = 0x84,
     STA_ZPG     = 0x85,
     STX_ZPG     = 0x86,
     SAX_ZPG     = 0x87,
     DEY         = 0x88,
+    NOP_IMM_3   = 0x89,
     TXA         = 0x8A,
     STY_ABS     = 0x8C,
     STA_ABS     = 0x8D,
@@ -215,6 +234,7 @@ enum OpCode {
 
     CPY_IMT     = 0xC0,
     CMP_IND_X   = 0xC1,
+    NOP_IMM_4   = 0xC2,
     DCP_IND_X   = 0xC3,
     CPY_ZPG     = 0xC4,
     CMP_ZPG     = 0xC5,
@@ -231,18 +251,22 @@ enum OpCode {
     BNE_REL     = 0xD0,
     CMP_IND_Y   = 0xD1,
     DCP_IND_Y   = 0xD3,
+    NOP_ZPG_X_5 = 0xD4,
     CMP_ZPG_X   = 0xD5,
     DEC_ZPG_X   = 0xD6,
     DCP_ZPG_X   = 0xD7,
     CLD         = 0xD8,
     CMP_ABS_Y   = 0xD9,
+    NOP_6       = 0xDA,
     DCP_ABS_Y   = 0xDB,
+    NOP_ABS_X_5 = 0xDC,
     CMP_ABS_X   = 0xDD,
     DEC_ABS_X   = 0xDE,
     DCP_ABS_X   = 0xDF,
 
     CPX_IMT     = 0xE0,
     SBC_IND_X   = 0xE1,
+    NOP_IMM_5   = 0xE2,
     ISC_IND_X   = 0xE3,
     CPX_ZPG     = 0xE4,
     SBC_ZPG     = 0xE5,
@@ -251,6 +275,7 @@ enum OpCode {
     INX         = 0xE8,
     SBC_IMT     = 0xE9,
     NOP         = 0xEA,
+    SBC_IMT_2   = 0xEB,
     CPX_ABS     = 0xEC,
     SBC_ABS     = 0xED,
     INC_ABS     = 0xEE,
@@ -259,12 +284,15 @@ enum OpCode {
     BEQ_REL     = 0xF0,
     SBC_IND_Y   = 0xF1,
     ISC_IND_Y   = 0xF3,
+    NOP_ZPG_X_6 = 0xF4,
     SBC_ZPG_X   = 0xF5,
     INC_ZPG_X   = 0xF6,
     ISC_ZPG_X   = 0xF7,
     SED         = 0xF8,
     SBC_ABS_Y   = 0xF9,
+    NOP_7       = 0xFA,
     ISC_ABS_Y   = 0xFB,
+    NOP_ABS_X_6 = 0xFC,
     SBC_ABS_X   = 0xFD,
     INC_ABS_X   = 0xFE,
     ISC_ABS_X   = 0xFF,
@@ -406,8 +434,8 @@ impl Clocked for Cpu {
         let (opMn, addrMode, cycles, xCycles, _) = self.getOpCodeInfo(opCode);
         let (target, bytes, increment, boundaryCrossed) = self.getAddressInfo(opMn, addrMode, self.pgmCounter.wrapping_add(1));
 
-        print!("PC: {:04X}, A: {:02X}, X: {:02X}, Y: {:02X}, P: {:02X}, SP: {:02X}, INST: {:?}\n",
-                                   self.pgmCounter, self.regA, self.regX, self.regY, self.getFlagValues(), self.stkPointer, opCode);
+        // print!("PC: {:04X}, A: {:02X}, X: {:02X}, Y: {:02X}, P: {:02X}, SP: {:02X}, INST: {:?}\n",
+        //                            self.pgmCounter, self.regA, self.regX, self.regY, self.getFlagValues(), self.stkPointer, opCode);
 
         // if self.pgmCounter == 0xC66E || self.counter == 8991 {
         //     panic!("DONE!");
@@ -430,9 +458,9 @@ impl Cpu {
     pub fn new (memory: Rc<RefCell<DataBus>>) -> Cpu {
 
         // load reset vector into program counter
-        // let lo = memory.borrow().readCpuMem(0xFFFC);
-        // let hi = memory.borrow().readCpuMem(0xFFFD);
-        // let prgC = ((hi as u16) << 8) + (lo as u16);
+        let lo = memory.borrow().readCpuMem(0xFFFC);
+        let hi = memory.borrow().readCpuMem(0xFFFD);
+        let prgC = ((hi as u16) << 8) + (lo as u16);
 
 
         let mut cpu = Cpu {
@@ -441,7 +469,7 @@ impl Cpu {
             regY: 0,
             stkPointer: 0xFD,
             memory: memory,
-            pgmCounter: 0xC000,
+            pgmCounter: prgC,
             flags: Flags::new(),
             waitCycles: 0,
             triggerIrq: false,
@@ -554,10 +582,10 @@ impl Cpu {
 
         // read and write on alternating cycles
         if self.oamCycles % 2 == 0 {
-            self.oamByte = self.readMem8(self.oamPage.clone());
+            self.oamByte = self.readMem8(*&self.oamPage);
         }
         else {
-            self.memory.borrow_mut().cpuWriteOam((self.oamPage & 0x00FF) as u8, self.oamByte.clone());
+            self.memory.borrow_mut().cpuWriteOam(*&self.oamByte);
             self.oamPage = self.oamPage.wrapping_add(1);
 
             // we've stepped into the next page of memory
@@ -927,13 +955,14 @@ impl Cpu {
         }
     }
 
+    // failed on ROR at address CF51, caused BEQ to execute when not supposed to
     fn ror(&mut self, target: Option<u16>) -> () {
         let oldCarry = self.flags.carry;
         if target == None {
             self.flags.carry = self.regA & 1;
             self.regA >>= 1;
-            self.setZNFlag(self.regA);
             self.regA |= (oldCarry << 7);
+            self.setZNFlag(self.regA);
         }
         else {
             let mut val = self.readMem8(target.unwrap());
@@ -967,18 +996,20 @@ impl Cpu {
     }
 
     fn sax(&mut self, target: Option<u16>) -> () {
-
+        self.writeMem8(target.unwrap(), self.regA & self.regX);
     }
 
     fn sbc(&mut self, target: Option<u16>) -> () {
         let oldVal = self.readMem8(target.unwrap());
         let newVal = self.regA.wrapping_sub(oldVal).wrapping_sub(1 - self.flags.carry);
 
-        self.flags.carry = if newVal > oldVal {1} else {0};
+        let newValInt = self.regA as i32 - oldVal as i32 - (1 - self.flags.carry as i32);
+
+        self.flags.carry = if newValInt >= 0 { 1 } else { 0 };
 
         // !((M^N) & 0x80) && ((M^result) & 0x80)
         // if the inputs have the same sign, and the input and result have different signs
-        if ((self.regA ^ oldVal) & 0x80) == 0 && ((self.regA ^ newVal) & 0x80) != 0 {
+        if ((self.regA ^ oldVal) & 0x80) != 0 && ((self.regA ^ newVal) & 0x80) != 0 {
             self.flags.overflow = 1;
         }
         else {
@@ -1099,16 +1130,30 @@ impl Cpu {
             }
             AddressMode::IndirectIndexed => {
                 let zpgAddr = self.readMem8(oper);
-                let storedAddr = self.readMem16(zpgAddr as u16);
+                let mut storedAddr: u16 = 0x0000;
+
+                if zpgAddr == 0xFF {
+                    storedAddr = ((self.readMem8(0x00) as u16) << 8) | self.readMem8(0xFF) as u16;
+                }
+                else {
+                    storedAddr = self.readMem16(zpgAddr as u16);
+                }
                 let target = storedAddr.wrapping_add(self.regY as u16);
 
                 return(Some(target), 2, self.pcShouldIncrement(*opCode), (storedAddr & 0x00FF) > (target & 0x00FF));
             }
             AddressMode::IndexedIndirect => {
                 let zpgAddr = self.readMem8(oper).wrapping_add(self.regX);
-                let realAddr = self.readMem16(zpgAddr as u16);
+                let mut storedAddr: u16 = 0x0000;
 
-                return (Some(realAddr), 2, self.pcShouldIncrement(*opCode), false);
+                if zpgAddr == 0xFF {
+                    storedAddr = ((self.readMem8(0x00) as u16) << 8) | self.readMem8(0xFF) as u16;
+                }
+                else {
+                    storedAddr = self.readMem16(zpgAddr as u16);
+                }
+
+                return (Some(storedAddr), 2, self.pcShouldIncrement(*opCode), false);
             }
             AddressMode::Relative => {
                 // this addressing mode is only for branching instructions
@@ -1226,14 +1271,14 @@ impl Cpu {
     }
 
     fn setFlags(&mut self, status: u8) -> () {
-        self.flags.carry =      (status & (1 << CARRY_POS)) >> CARRY_POS;
-        self.flags.zero =       (status & (1 << ZERO_POS)) >> ZERO_POS;
-        self.flags.interrupt =  (status & (1 << INT_POS)) >> INT_POS;
-        self.flags.decimal =    (status & (1 << DEC_POS)) >> DEC_POS;
-        self.flags.brk =        (status & (1 << BRK_POS)) >> BRK_POS;
-        self.flags.unused =     (status & (1 << U_POS)) >> U_POS;
-        self.flags.overflow =   (status & (1 << OVER_POS)) >> OVER_POS;
-        self.flags.negative =   (status & (1 << NEG_POS)) >> NEG_POS;
+        self.flags.carry =      (status >> CARRY_POS) & 1;
+        self.flags.zero =       (status >> ZERO_POS) & 1;
+        self.flags.interrupt =  (status >> INT_POS) & 1;
+        self.flags.decimal =    (status >> DEC_POS) & 1;
+        //self.flags.brk =        (status >> BRK_POS) & 1;
+        self.flags.unused =     1;
+        self.flags.overflow =   (status >> OVER_POS) & 1;
+        self.flags.negative =   (status >> NEG_POS) & 1;
     }
 
     fn getFlagValues(&self) -> u8 {
@@ -1242,8 +1287,8 @@ impl Cpu {
         status |= ((self.flags.zero & 1) << ZERO_POS);
         status |= ((self.flags.interrupt & 1) << INT_POS);
         status |= ((self.flags.decimal & 1) << DEC_POS);
-        status |= ((self.flags.brk & 1) << BRK_POS);
-        status |= ((self.flags.unused & 1) << U_POS);
+        //status |= ((self.flags.brk & 1) << BRK_POS);
+        status |= (1 << U_POS);
         status |= ((self.flags.overflow & 1) << OVER_POS);
         status |= ((self.flags.negative & 1) << NEG_POS);
         return status;
@@ -1353,7 +1398,7 @@ impl Cpu {
             OpCode::SRE_ABS_Y =>    (OpMnemonic::SRE, ABS_Y, 7, 1, 3),
             OpCode::EOR_ABS_X =>    (OpMnemonic::EOR, ABS_X, 4, 1, 3),
             OpCode::LSR_ABS_X =>    (OpMnemonic::LSR, ABS_X, 7, 0, 3),
-            OpCode::SRE_ABS_X =>    (OpMnemonic::SRE, SRE_X, 7, 0, 3),
+            OpCode::SRE_ABS_X =>    (OpMnemonic::SRE, ABS_X, 7, 0, 3),
 
             // 0x60
             OpCode::RTS =>          (OpMnemonic::RTS, IMP, 6, 0, 1),
@@ -1484,6 +1529,7 @@ impl Cpu {
             OpCode::INX =>          (OpMnemonic::INX, IMP, 2, 0, 1),
             OpCode::SBC_IMT =>      (OpMnemonic::SBC, IMT, 2, 0, 2),
             OpCode::NOP =>          (OpMnemonic::NOP, IMP, 2, 0, 1),
+            OpCode::SBC_IMT_2 =>    (OpMnemonic::SBC, IMT, 2, 0, 2),
             OpCode::CPX_ABS =>      (OpMnemonic::CPX, ABS, 4, 0, 3),
             OpCode::SBC_ABS =>      (OpMnemonic::SBC, ABS, 4, 0, 3),
             OpCode::INC_ABS =>      (OpMnemonic::INC, ABS, 6, 0, 3),
@@ -1502,6 +1548,35 @@ impl Cpu {
             OpCode::SBC_ABS_X =>    (OpMnemonic::SBC, ABS_X, 4, 1, 3),
             OpCode::INC_ABS_X =>    (OpMnemonic::INC, ABS_X, 7, 0, 3),
             OpCode::ISC_ABS_X =>    (OpMnemonic::ISC, ABS_X, 7, 0, 3),
+
+            // extra NOPs
+            OpCode::NOP_ZPG_1 =>    (OpMnemonic::NOP, ZPG, 3, 0, 3),
+            OpCode::NOP_ABS_1 =>    (OpMnemonic::NOP, ABS, 4, 0, 3),
+            OpCode::NOP_ZPG_X_1 =>  (OpMnemonic::NOP, ZPG_X, 4, 0, 3),
+            OpCode::NOP_1 =>        (OpMnemonic::NOP, IMP, 2, 0, 3),
+            OpCode::NOP_ABS_X_1 =>  (OpMnemonic::NOP, ABS_X, 4, 1, 3),
+            OpCode::NOP_ZPG_X_2 =>  (OpMnemonic::NOP, ZPG_X, 4, 0, 3),
+            OpCode::NOP_2 =>        (OpMnemonic::NOP, IMP, 2, 0, 3),
+            OpCode::NOP_ABS_X_2 =>  (OpMnemonic::NOP, ABS_X, 4, 1, 3),
+            OpCode::NOP_ZPG_4 =>    (OpMnemonic::NOP, ZPG, 3, 0, 3),
+            OpCode::NOP_ZPG_X_3 =>  (OpMnemonic::NOP, ZPG_X, 4, 0, 3),
+            OpCode::NOP_4 =>        (OpMnemonic::NOP, IMP, 2, 0, 3),
+            OpCode::NOP_ABS_X_3 =>  (OpMnemonic::NOP, ABS_X, 4, 1, 3),
+            OpCode::NOP_ZPG_3 =>    (OpMnemonic::NOP, ZPG, 3, 0, 3),
+            OpCode::NOP_ZPG_X_4 =>  (OpMnemonic::NOP, ZPG_X, 4, 0, 3),
+            OpCode::NOP_5 =>        (OpMnemonic::NOP, IMP, 2, 0, 3),
+            OpCode::NOP_ABS_X_4 =>  (OpMnemonic::NOP, ABS_X, 4, 1, 3),
+            OpCode::NOP_IMM_1 =>    (OpMnemonic::NOP, IMT, 2, 0, 3),
+            OpCode::NOP_IMM_2 =>    (OpMnemonic::NOP, IMT, 2, 0, 3),
+            OpCode::NOP_IMM_3 =>    (OpMnemonic::NOP, IMT, 2, 0, 3),
+            OpCode::NOP_IMM_4 =>    (OpMnemonic::NOP, IMT, 2, 0, 3),
+            OpCode::NOP_ZPG_X_5 =>  (OpMnemonic::NOP, IMT, 2, 0, 3),
+            OpCode::NOP_6 =>        (OpMnemonic::NOP, IMP, 2, 0, 3),
+            OpCode::NOP_ABS_X_5 =>  (OpMnemonic::NOP, ABS_X, 4, 1, 3),
+            OpCode::NOP_IMM_5 =>    (OpMnemonic::NOP, IMT, 2, 0, 3),
+            OpCode::NOP_ZPG_X_6 =>  (OpMnemonic::NOP, ZPG_X, 4, 0, 3),
+            OpCode::NOP_7 =>        (OpMnemonic::NOP, IMP, 2, 0, 3),
+            OpCode::NOP_ABS_X_6 =>  (OpMnemonic::NOP, ABS_X, 4, 1, 3),
         }
     }
 }

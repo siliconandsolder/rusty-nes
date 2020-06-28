@@ -275,63 +275,6 @@ impl Clocked for Ppu {
                             oamIdx += 1;
                         }
                         if self.spriteLineCount > 8 { self.fSprOver = 1 };
-
-                        // behold: sprite logic!
-                        for i in 0..self.spriteLineCount {
-                            let mut sprPatBitsLo: u8 = 0;
-                            let mut sprPatBitsHi: u8 = 0;
-
-                            let sprY = self.vSpriteLine[(i * 4) as usize].clone() as u16;
-                            let mut sprTile = self.vSpriteLine[(i * 4 + 1) as usize].clone() as u16;
-                            let sprAttr = self.vSpriteLine[(i * 4 + 2) as usize].clone() as u16;
-                            let mut row = self.scanLine - sprY;
-
-                            let mut sprAddress: u16 = 0;
-
-                            if self.fSprHeight == 0 {
-                                // sprite flipped vertically
-                                if sprAttr & 0x80 == 0x80 {
-                                    row = 7 - row;
-                                }
-                                sprAddress = ((self.fSprTile as u16) << 12) | (sprTile << 4) | row;
-                            }
-                            else {
-                                // sprite flipped vertically
-                                if sprAttr & 0x80 == 0x80 {
-                                    row = 15 - row;
-                                }
-
-                                let flagTile: u16 = (self.fSprTile & 1) as u16;
-                                sprTile &= 0xFE;
-                                if row > 7 {
-                                    sprTile += 1;
-                                    row -= 8;
-                                }
-                                sprAddress = (flagTile << 12) | (sprTile << 4) | row;
-                            }
-
-                            // sprPatAddrHi = sprPatAddrLo + 8;
-                            sprPatBitsLo = self.ppuBus.readPpuMem(sprAddress);
-                            sprPatBitsHi = self.ppuBus.readPpuMem(sprAddress + 8);
-
-                            // flip sprite horizontally
-                            if sprAttr & 0x40 == 0x40 {
-
-                                let horizontalFlipper = |mut byte: u8| -> u8 {
-                                    byte = (byte & 0xF0) >> 4 | (byte & 0x0F) << 4;
-                                    byte = (byte & 0xCC) >> 2 | (byte & 0x33) << 2;
-                                    byte = (byte & 0xAA) >> 1 | (byte & 0x55) << 1;
-                                    byte
-                                };
-
-                                sprPatBitsHi = horizontalFlipper(sprPatBitsHi);
-                                sprPatBitsLo = horizontalFlipper(sprPatBitsLo);
-                            }
-
-                            // finally load the bits into the shift registers
-                            self.sprShiftPatHi[i as usize] = sprPatBitsHi;
-                            self.sprShiftPatLo[i as usize] = sprPatBitsLo;
-                        }
                     }
                 },
                 280..=304 => {
@@ -345,6 +288,62 @@ impl Clocked for Ppu {
                 338 => { self.bgTileId = self.ppuBus.readPpuMem( 0x2000 | (*&self.v & 0x0FFF) ); },
                 340 => {
                     self.bgTileId = self.ppuBus.readPpuMem( 0x2000 | (*&self.v & 0x0FFF) );
+
+                    // behold: sprite logic!
+                    for i in 0..self.spriteLineCount {
+                        let mut sprPatBitsLo: u8 = 0;
+                        let mut sprPatBitsHi: u8 = 0;
+
+                        let sprY = self.vSpriteLine[(i * 4) as usize].clone() as u16;
+                        let mut sprTile = self.vSpriteLine[(i * 4 + 1) as usize].clone() as u16;
+                        let sprAttr = self.vSpriteLine[(i * 4 + 2) as usize].clone() as u16;
+                        let mut row = self.scanLine - sprY;
+
+                        let mut sprAddress: u16 = 0;
+
+                        if self.fSprHeight == 0 {
+                            // sprite flipped vertically
+                            if sprAttr & 0x80 == 0x80 {
+                                row = 7 - row;
+                            }
+                            sprAddress = ((self.fSprTile as u16) << 12) | (sprTile << 4) | row;
+                        } else {
+                            // sprite flipped vertically
+                            if sprAttr & 0x80 == 0x80 {
+                                row = 15 - row;
+                            }
+
+                            let flagTile: u16 = (self.fSprTile & 1) as u16;
+                            sprTile &= 0xFE;
+                            if row > 7 {
+                                sprTile += 1;
+                                row -= 8;
+                            }
+                            sprAddress = (flagTile << 12) | (sprTile << 4) | row;
+                        }
+
+                        // sprPatAddrHi = sprPatAddrLo + 8;
+                        sprPatBitsLo = self.ppuBus.readPpuMem(sprAddress);
+                        sprPatBitsHi = self.ppuBus.readPpuMem(sprAddress + 8);
+
+                        // flip sprite horizontally
+                        if sprAttr & 0x40 == 0x40 {
+                            let horizontalFlipper = |mut byte: u8| -> u8 {
+                                byte = (byte & 0xF0) >> 4 | (byte & 0x0F) << 4;
+                                byte = (byte & 0xCC) >> 2 | (byte & 0x33) << 2;
+                                byte = (byte & 0xAA) >> 1 | (byte & 0x55) << 1;
+                                byte
+                            };
+
+                            sprPatBitsHi = horizontalFlipper(sprPatBitsHi);
+                            sprPatBitsLo = horizontalFlipper(sprPatBitsLo);
+                        }
+
+                        // finally load the bits into the shift registers
+                        self.sprShiftPatHi[i as usize] = sprPatBitsHi;
+                        self.sprShiftPatLo[i as usize] = sprPatBitsLo;
+                    }
+
                 },
                 _=> {}
             }
@@ -373,9 +372,9 @@ impl Clocked for Ppu {
                     // first four palette entries reserved for background colours
                     sprPallete = (self.vSpriteLine[(i * 4 + 2) as usize] & 0x03) + 0x04;
                     // priority over background (1 means priority)
-                    sprPriority = if (self.vSpriteLine[(i * 4 + 2) as usize] & 0x20) == 0x20 {1} else {0};
+                    sprPriority = if (self.vSpriteLine[(i * 4 + 2) as usize] & 0x20) == 0x20 {0} else {1};
 
-                    if sprPriority != 0 {
+                    if sprPixel != 0 {
                         if i == 0 { self.isZeroBeingRendered = true; }
                         break; // lower indexes are higher priority, meaning no successive sprite can trump this one.
                     }
@@ -539,8 +538,8 @@ impl Ppu {
         self.prevReg = val;
     }
 
-    pub fn cpuWriteOam(&mut self, ref addr: u8, val: u8) -> () {
-        self.ppuBus.writeOam(*addr, val);
+    pub fn cpuWriteOam(&mut self, val: u8) -> () {
+        self.ppuBus.writeOam(*&self.oamAddr, val);
         self.oamAddr = self.oamAddr.wrapping_add(1);
     }
 

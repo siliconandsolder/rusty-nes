@@ -18,12 +18,12 @@ fn main() {
 	// 	]
 	// ).unwrap();
 
-	let path = Path::new("./nestest.nes");
+	let path = Path::new("./super_mario_bros.nes");
 	let mut console = Console::new(path);
 	console.cycle();
 
     // let sdl = sdl2::init().unwrap();
-    // let vid = sdl.video().unwrap();
+    // let vid = sldl.video().unwrap();
     //
     // let window = vid
     //     .window("Hello!", 768, 720)

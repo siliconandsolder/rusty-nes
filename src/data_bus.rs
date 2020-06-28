@@ -81,8 +81,8 @@ impl DataBus {
         }
     }
 
-    pub fn cpuWriteOam(&mut self, ref addr: u8, val: u8) -> () {
-        self.ppu.as_ref().unwrap().borrow_mut().cpuWriteOam(*addr, val);
+    pub fn cpuWriteOam(&mut self, val: u8) -> () {
+        self.ppu.as_ref().unwrap().borrow_mut().cpuWriteOam(val);
     }
 
     pub fn ppuTriggerNMI(&mut self) -> () {

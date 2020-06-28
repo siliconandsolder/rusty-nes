@@ -82,10 +82,10 @@ impl Cartridge {
                 numPrgBanks = header.prgSize;
                 numChrBanks = header.chrSize;
 
-                prgMem.resize((numPrgBanks as u16 * 16384) as usize, 0);
+                prgMem.resize(numPrgBanks as usize * 16384, 0);
                 for i in 0..prgMem.len() { prgMem[i] = *fIter.next().unwrap(); }
 
-                chrMem.resize((numChrBanks as u16 * 8192) as usize, 0);
+                chrMem.resize(numChrBanks as usize * 8192, 0);
                 for i in 0..chrMem.len() { chrMem[i] = *fIter.next().unwrap(); }
             },
             2 => {},
