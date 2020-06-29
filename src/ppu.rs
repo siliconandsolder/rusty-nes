@@ -9,12 +9,15 @@ use crate::data_bus::DataBus;
 use crate::clock;
 use crate::clock::Clocked;
 use crate::palette::*;
-use sdl2::render::WindowCanvas;
-use sdl2::pixels::Color;
+use sdl2::render::{WindowCanvas, Texture, TextureAccess, TextureCreator};
+use sdl2::pixels::{Color, PixelFormatEnum};
 use sdl2::rect::Rect;
 use crate::ppu_bus::PpuBus;
 use std::fs::File;
 use std::io::Write;
+use sdl2::mouse::SystemCursor::No;
+use sdl2::video::WindowContext;
+use std::borrow::Borrow;
 
 const SCANLINE_VISIBLE_MAX: u16 = 239;
 const SCANLINE_POST: u16 = 240;
@@ -26,7 +29,46 @@ const CYCLE_MAX: u16 = 340;
 
 const CYCLES_PER_FRAME: u32 = 89342;
 
-pub struct Ppu {
+const PIXEL_WIDTH: u32 = 256;
+const PIXEL_HEIGHT: u32 = 240;
+
+struct TextureManager<'a> {
+    textureCreator: TextureCreator<WindowContext>,
+    texture: Option<Texture<'a>>
+}
+
+impl<'a> TextureManager<'a> {
+    pub fn new(textureCreator: TextureCreator<WindowContext>) -> Self {
+        let mut tm = TextureManager {
+            textureCreator,
+            texture: None
+        };
+        tm.createTexture();
+        return tm;
+    }
+
+    pub fn createTexture(&mut self) -> () {
+        let tcp = &self.textureCreator as *const TextureCreator<WindowContext>;
+        let texture = unsafe { &*tcp }
+            .create_texture(
+                PixelFormatEnum::RGB24,
+                TextureAccess::Streaming,
+                PIXEL_WIDTH,
+                PIXEL_HEIGHT,
+            ).unwrap();
+        self.texture = Some(texture);
+    }
+
+    pub fn updateTexture(&mut self, pixelBytes: &[u8]) -> () {
+        self.texture.as_mut().unwrap().update(None, pixelBytes, (PIXEL_WIDTH * 3) as usize);
+    }
+
+    pub fn getTextureRef(&self) -> &Texture<'a> {
+        return self.texture.as_ref().unwrap();
+    }
+}
+
+pub struct Ppu<'a> {
     cycle: u16,
     scanLine: u16,
 
@@ -101,19 +143,23 @@ pub struct Ppu {
     fSprOver: u8,
     fSprZero: u8,
 
-    dataBus: Rc<RefCell<DataBus>>,
+    dataBus: Rc<RefCell<DataBus<'a>>>,
     ppuBus: PpuBus,
 
     // SDL pixels (rectangles)
     canvas: Rc<RefCell<WindowCanvas>>,
+    textureManager: TextureManager<'a>,
     vPixels: Vec<Rect>,
+    vPixelColours: Vec<u8>,
+    vPixelPalette: Vec<u8>,
     
     // debug
     log: File
 
 }
 
-impl Clocked for Ppu {
+impl<'a> Clocked for Ppu<'a> {
+    #[inline(always)]
     fn cycle(&mut self) {
 
         let renderEnabled = self.fSprEnabled == 1 || self.fBckEnabled == 1;
@@ -124,7 +170,6 @@ impl Clocked for Ppu {
 
         if self.scanLine == SCANLINE_VBLANK_MIN && self.cycle == 1 {
             self.nmiOccured = true;
-            self.canvas.borrow_mut().present();
         }
 
         if self.scanLine == SCANLINE_MAX && self.cycle == 1 {
@@ -139,8 +184,6 @@ impl Clocked for Ppu {
                 self.sprShiftPatLo[i] = 0;
                 self.sprShiftPatHi[i] = 0;
             }
-
-            self.canvas.borrow_mut().clear();
         }
 
         if !self.canTrigNmi && self.nmiDelay > 0 {
@@ -439,7 +482,7 @@ impl Clocked for Ppu {
 
         // call draw function here
         if renderEnabled && self.cycle > 0 && self.cycle < 257 && self.scanLine < SCANLINE_VBLANK_MIN - 1 {
-             self.drawPixel(self.cycle - 1, self.scanLine.clone(), palette, pixel);
+            self.setPixelColour(self.cycle - 1, self.scanLine.clone(), palette, pixel);
         }
 
 
@@ -452,13 +495,20 @@ impl Clocked for Ppu {
             if self.scanLine > SCANLINE_MAX {
                 self.scanLine = 0;
                 self.isOddFrame = !self.isOddFrame;
+
+                if renderEnabled {
+                    self.drawFrame();
+                }
             }
         }
     }
 }
 
-impl Ppu {
-    pub fn new(mem: Rc<RefCell<DataBus>>, canvas: Rc<RefCell<WindowCanvas>>, ppuBus: PpuBus) -> Self {
+impl<'a> Ppu<'a> {
+    pub fn new(mem: Rc<RefCell<DataBus<'a>>>, canvas: Rc<RefCell<WindowCanvas>>, ppuBus: PpuBus) -> Self {
+
+        let textureManager = TextureManager::new(canvas.borrow_mut().texture_creator());
+
         Ppu {
             cycle: 0,
             scanLine: 0,
@@ -507,7 +557,10 @@ impl Ppu {
             dataBus: mem,
             ppuBus: ppuBus,
             canvas: canvas,
+            textureManager: textureManager,
             vPixels: vec![Rect::new(0, 0, 1, 1); 61440],
+            vPixelColours: vec![0; (PIXEL_WIDTH * PIXEL_HEIGHT * 3) as usize],
+            vPixelPalette: vec![0; (PIXEL_WIDTH * PIXEL_HEIGHT) as usize],
             log: File::create("log.txt").unwrap()
         }
     }
@@ -722,29 +775,22 @@ impl Ppu {
         }
     }
 
-    fn drawPixel(&mut self, x: u16, y: u16, palette: u8, pixel: u8) -> () {
-        let (mut width, mut height) = self.canvas.borrow().window().size();
-        width /= 256;
-        height /= 240;
-
-        let realX = (x * width as u16) as i32;
-        let realY = (y * height as u16) as i32;
-
-        let pixelRect = self.vPixels.get_mut((x + (y * 256)) as usize)
-            .expect(format!("Died at X: {} and Y: {}", x, y).as_ref());
-
-        // reset pixel attributes if screen has changed
-        if pixelRect.width() != width { pixelRect.set_width(width) };
-        if pixelRect.height() != height { pixelRect.set_height(height) };
-        if pixelRect.x() != realX { pixelRect.set_x(realX) };
-        if pixelRect.y() != realY { pixelRect.set_y(realY) };
-
+    fn setPixelColour(&mut self, x: u16, y: u16, palette: u8, pixel: u8) -> () {
         let mut address = self.ppuBus.readPpuMem(0x3F00 + (palette << 2) as u16 + pixel as u16);
-        let colour = PALETTE_ARRAY.get((address & 0x003F) as usize).unwrap();
-        self.canvas.borrow_mut().set_draw_color(Color::RGB(colour.red, colour.green, colour.blue));
-        self.canvas.borrow_mut().fill_rect(self.vPixels[(x + (y * 256)) as usize]);
+        self.vPixelPalette[(x + (y * PIXEL_WIDTH as u16)) as usize] = address;
+    }
 
-        // print!("X: {:04}, Y: {:04}, Address: {:04}, Red: {:04}, Green: {:04}, Blue: {:04}\n",
-        //        x, y, address, colour.red, colour.green, colour.blue);
+    fn drawFrame(&mut self) -> () {
+        for i in 0..(PIXEL_WIDTH * PIXEL_HEIGHT) {
+            let colour = PALETTE_ARRAY.get((self.vPixelPalette[i as usize] & 0x003F) as usize).unwrap();
+            self.vPixelColours[(i * 3) as usize] = colour.red;
+            self.vPixelColours[(i * 3 + 1) as usize] = colour.green;
+            self.vPixelColours[(i * 3 + 2) as usize] = colour.blue;
+        }
+
+        self.textureManager.updateTexture(self.vPixelColours.as_slice());
+        self.canvas.borrow_mut().clear();
+        self.canvas.borrow_mut().copy(self.textureManager.getTextureRef(), None, None).unwrap();
+        self.canvas.borrow_mut().present();
     }
 }

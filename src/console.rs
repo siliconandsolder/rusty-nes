@@ -15,20 +15,20 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use std::path::Path;
 use sdl2::EventPump;
-use self::sdl2::pixels::Color;
+use self::sdl2::pixels::{Color, PixelFormatEnum};
 use crate::ppu_bus::PpuBus;
 
 const MASTER_CLOCK_NANO: u8 = 47; // should be about 46.56, but the std::thread functions don't allow decimals
 
-pub struct Console {
-	cpu: Rc<RefCell<Cpu>>,
-	ppu: Rc<RefCell<Ppu>>,
-	bus: Rc<RefCell<DataBus>>,
+pub struct Console<'a> {
+	cpu: Rc<RefCell<Cpu<'a>>>,
+	ppu: Rc<RefCell<Ppu<'a>>>,
+	bus: Rc<RefCell<DataBus<'a>>>,
 	cartridge: Rc<RefCell<Cartridge>>,
 	eventPump: Rc<RefCell<EventPump>>
 }
 
-impl Console {
+impl<'a> Console<'a> {
 	pub fn new(game: &Path) -> Self {
 
 		// sdl setup
@@ -45,9 +45,9 @@ impl Console {
 		let eventPump = Rc::new(RefCell::new(sdl.event_pump().unwrap()));
 
 		let mut canvas = window.into_canvas().present_vsync().build().unwrap();
+		canvas.clear();
 		canvas.set_draw_color(Color::RGB(0,0,0));
 		canvas.present();
-
 
 		let cartridge = Rc::new(RefCell::new(Cartridge::new(game)));
 		let bus = Rc::new(RefCell::new(DataBus::new()));
@@ -68,7 +68,9 @@ impl Console {
 	}
 }
 
-impl Clocked for Console {
+impl<'a> Clocked for Console<'a> {
+
+	#[inline(always)]
 	fn cycle(&mut self) {
 		'game: loop {
 			let now = SystemTime::now();
@@ -88,6 +90,8 @@ impl Clocked for Console {
 					_ => {},
 				}
 			}
+
+			//println!("Nanoseconds: {}", now.elapsed().unwrap().as_nanos());
 
 			// wait if we were too fast
 			// let timeDiff: i128 = (MASTER_CLOCK_NANO as u128 - now.elapsed().unwrap().as_nanos()) as i128;

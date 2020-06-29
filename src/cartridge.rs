@@ -115,6 +115,7 @@ impl Cartridge {
         }
     }
 
+    #[inline(always)]
     pub fn cpuRead(&mut self, ref addr: u16) -> u8 {
 		let mut mapAddr = self.pMapper.cpuMapRead(*addr);
         if mapAddr.is_none() {
@@ -127,6 +128,7 @@ impl Cartridge {
 
     }
 
+    #[inline(always)]
     pub fn cpuWrite(&mut self, ref addr: u16, val: u8) -> () {
         let mapAddr = self.pMapper.cpuMapWrite(*addr);
         if mapAddr.is_some() {
@@ -138,6 +140,7 @@ impl Cartridge {
         }
     }
 
+    #[inline(always)]
     pub fn ppuRead(&mut self, ref addr: u16) -> u8 {
         let mut mapAddr = self.pMapper.ppuMapRead(*addr);
         if mapAddr.is_none() {
@@ -149,6 +152,7 @@ impl Cartridge {
             .clone();
     }
 
+    #[inline(always)]
     pub fn ppuWrite(&mut self, ref addr: u16, val: u8) -> () {
         let mapAddr = self.pMapper.ppuMapWrite(*addr);
         if mapAddr.is_some() {

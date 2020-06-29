@@ -12,16 +12,16 @@ use crate::palette::*;
 
 // Split the buses in two. One for CPU-PPU intercommunication, one for PPU data reads and writes.
 
-pub struct DataBus {
+pub struct DataBus<'a> {
     cpuMem: Vec<u8>,
 
-    cpu: Option<Rc<RefCell<Cpu>>>,
-    ppu: Option<Rc<RefCell<Ppu>>>,
+    cpu: Option<Rc<RefCell<Cpu<'a>>>>,
+    ppu: Option<Rc<RefCell<Ppu<'a>>>>,
     cartridge: Option<Rc<RefCell<Cartridge>>>
 }
 
-impl DataBus {
-    pub fn new() -> DataBus {
+impl<'a> DataBus<'a> {
+    pub fn new() -> Self {
         DataBus {
             cpuMem: vec![0; 0x0800],
             cpu: None,
@@ -30,11 +30,11 @@ impl DataBus {
         }
     }
 
-    pub fn attachPpu(&mut self, ppuRef: Rc<RefCell<Ppu>>) -> () {
+    pub fn attachPpu(&mut self, ppuRef: Rc<RefCell<Ppu<'a>>>) -> () {
         self.ppu = Some(Rc::from(ppuRef));
     }
 
-    pub fn attachCpu(&mut self, cpuRef: Rc<RefCell<Cpu>>) -> () {
+    pub fn attachCpu(&mut self, cpuRef: Rc<RefCell<Cpu<'a>>>) -> () {
         self.cpu = Some(Rc::from(cpuRef));
     }
 
@@ -42,6 +42,7 @@ impl DataBus {
         self.cartridge = Some(Rc::from(cartRef))
     }
 
+    #[inline(always)]
     pub fn writeCpuMem(&mut self, ref addr: u16, val: u8) -> () {
         if *addr < 0x2000 {
             self.cpuMem[(*addr & 0x07FF) as usize] = val;
@@ -61,6 +62,7 @@ impl DataBus {
         }
     }
 
+    #[inline(always)]
     pub fn readCpuMem(&self, ref addr: u16) -> u8 {
         if *addr < 0x2000 {
             return self.cpuMem[(*addr & 0x07FF) as usize].clone();
@@ -81,6 +83,7 @@ impl DataBus {
         }
     }
 
+    #[inline(always)]
     pub fn cpuWriteOam(&mut self, val: u8) -> () {
         self.ppu.as_ref().unwrap().borrow_mut().cpuWriteOam(val);
     }

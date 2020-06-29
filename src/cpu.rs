@@ -353,7 +353,7 @@ impl Flags {
 
 const STACK_IDX: u16 = 0x0100;
 
-pub struct Cpu {
+pub struct Cpu<'a> {
     // registers
     regA: u8,
     regY: u8,
@@ -363,7 +363,7 @@ pub struct Cpu {
     pgmCounter: u16,
     stkPointer: u8,
 
-    memory: Rc<RefCell<DataBus>>,
+    memory: Rc<RefCell<DataBus<'a>>>,
 
     // flag(s)
     flags: Flags,
@@ -394,7 +394,8 @@ pub struct Cpu {
     counter: u16
 }
 
-impl Clocked for Cpu {
+impl<'a> Clocked for Cpu<'a> {
+    #[inline(always)]
     fn cycle(&mut self) {
 
         self.isEvenCycle = !self.isEvenCycle;
@@ -453,7 +454,7 @@ impl Clocked for Cpu {
     }
 }
 
-impl Cpu {
+impl<'a> Cpu<'a> {
 
     pub fn new (memory: Rc<RefCell<DataBus>>) -> Cpu {
 
@@ -494,6 +495,7 @@ impl Cpu {
         self.pgmCounter = self.readMem16(0xFFFC);
     }
 
+    #[inline(always)]
     fn executeInstruction(&mut self, opCode: OpMnemonic, target: Option<u16>) -> () {
         match opCode {
             OpMnemonic::ADC => { self.adc(target) },
@@ -1085,6 +1087,7 @@ impl Cpu {
         self.setZNFlag(self.regA);
     }
 
+    #[inline(always)]
     fn getAddressInfo(&self, ref opCode: OpMnemonic, ref addrMode: AddressMode, oper: u16) -> (Option<u16>, u16, bool, bool) {
         // target address (option)
         // bytes to increment
@@ -1306,6 +1309,7 @@ impl Cpu {
 //        return 1 << bitPos;
 //    }
 
+    #[inline(always)]
     fn getOpCodeInfo(&self, opcode: OpCode) -> (OpMnemonic, AddressMode, u8, u8, u8) {
         // Opcode Mnemonic
         // Address Mode
