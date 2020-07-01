@@ -23,7 +23,7 @@ impl PpuBus {
 		}
 	}
 
-	#[inline(always)]
+	#[inline]
 	pub fn readPpuMem(&self, ref addr: u16) -> u8 {
 		let addr = *addr & 0x3FFF;
 		if addr < 0x2000 {
@@ -54,7 +54,7 @@ impl PpuBus {
 		return 0;
 	}
 
-	#[inline(always)]
+	#[inline]
 	pub fn writePpuMem(&mut self, ref addr: u16, val: u8) -> () {
 		let addr = *addr & 0x3FFF;
 		if addr < 0x2000 {
@@ -83,12 +83,12 @@ impl PpuBus {
 		}
 	}
 
-	#[inline(always)]
+	#[inline]
 	pub fn writeOam(&mut self, ref addr: u8, val: u8) -> () {
 		self.oamMem[*addr as usize] = val;
 	}
 
-	#[inline(always)]
+	#[inline]
 	pub fn readOam(&mut self, ref addr: u8) -> u8 {
 		return self.oamMem[*addr as usize].clone();
 	}

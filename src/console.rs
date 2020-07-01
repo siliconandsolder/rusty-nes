@@ -70,17 +70,30 @@ impl<'a> Console<'a> {
 
 impl<'a> Clocked for Console<'a> {
 
-	#[inline(always)]
+	#[inline]
 	fn cycle(&mut self) {
+		let mut fps: u8 = 0;
+		let mut now = SystemTime::now();
 		'game: loop {
-			let now = SystemTime::now();
-			for i in 1..=12 {
-				if i == 1 {
-					self.cpu.borrow_mut().cycle();
-				}
-				if i % 4 == 0 {
-					self.ppu.borrow_mut().cycle();
-				}
+
+			// for i in 1..=12 {
+			// 	if i == 1 {
+			// 		self.cpu.borrow_mut().cycle();
+			// 	}
+			// 	if i % 4 == 0 {
+			// 		self.ppu.borrow_mut().cycle();
+			// 	}
+
+			// }
+
+
+			// one frame (approximately)
+			for i in 0..29781 {
+				self.cpu.borrow_mut().cycle();
+				self.ppu.borrow_mut().cycle();
+				self.ppu.borrow_mut().cycle();
+				self.ppu.borrow_mut().cycle();
+				//println!("Nanoseconds: {}", now.elapsed().unwrap().as_nanos());
 			}
 
 			for event in self.eventPump.borrow_mut().poll_iter() {
@@ -90,8 +103,13 @@ impl<'a> Clocked for Console<'a> {
 					_ => {},
 				}
 			}
+			fps += 1;
 
-			//println!("Nanoseconds: {}", now.elapsed().unwrap().as_nanos());
+			if now.elapsed().unwrap().as_secs() >= 1 {
+				println!("FPS: {}", fps);
+				fps = 0;
+				now = SystemTime::now();
+			}
 
 			// wait if we were too fast
 			// let timeDiff: i128 = (MASTER_CLOCK_NANO as u128 - now.elapsed().unwrap().as_nanos()) as i128;

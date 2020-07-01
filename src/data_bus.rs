@@ -42,7 +42,7 @@ impl<'a> DataBus<'a> {
         self.cartridge = Some(Rc::from(cartRef))
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn writeCpuMem(&mut self, ref addr: u16, val: u8) -> () {
         if *addr < 0x2000 {
             self.cpuMem[(*addr & 0x07FF) as usize] = val;
@@ -62,7 +62,7 @@ impl<'a> DataBus<'a> {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn readCpuMem(&self, ref addr: u16) -> u8 {
         if *addr < 0x2000 {
             return self.cpuMem[(*addr & 0x07FF) as usize].clone();
@@ -83,7 +83,7 @@ impl<'a> DataBus<'a> {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn cpuWriteOam(&mut self, val: u8) -> () {
         self.ppu.as_ref().unwrap().borrow_mut().cpuWriteOam(val);
     }

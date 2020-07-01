@@ -159,7 +159,7 @@ pub struct Ppu<'a> {
 }
 
 impl<'a> Clocked for Ppu<'a> {
-    #[inline(always)]
+    #[inline]
     fn cycle(&mut self) {
 
         let renderEnabled = self.fSprEnabled == 1 || self.fBckEnabled == 1;

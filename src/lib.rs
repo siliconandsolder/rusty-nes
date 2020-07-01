@@ -3,6 +3,7 @@ pub mod palette;
 pub mod data_bus;
 pub mod ppu_bus;
 pub mod save_load;
+pub mod opcode_info;
 pub mod cpu;
 pub mod ppu;
 pub mod cartridge;

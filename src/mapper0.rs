@@ -18,6 +18,7 @@ impl Mapper0 {
 }
 
 impl Mapper for Mapper0 {
+    #[inline]
     fn cpuMapRead(&mut self, ref addr: u16) -> Option<u32> {
         if *addr >= 0x8000 && *addr <= 0xFFFF {
             return match self.numPrgBanks {
@@ -29,6 +30,7 @@ impl Mapper for Mapper0 {
         return None;
     }
 
+    #[inline]
     fn cpuMapWrite(&mut self, ref addr: u16) -> Option<u32> {
         if *addr >= 0x8000 && *addr <= 0xFFFF {
             return match self.numPrgBanks {
@@ -40,6 +42,7 @@ impl Mapper for Mapper0 {
         return None;
     }
 
+    #[inline]
     fn ppuMapRead(&mut self, ref addr: u16) -> Option<u32> {
         if *addr >= 0x0000 && *addr <= 0x1FFF {
             return Some(*addr as u32);
@@ -48,6 +51,7 @@ impl Mapper for Mapper0 {
         return None;
     }
 
+    #[inline]
     fn ppuMapWrite(&mut self, ref addr: u16) -> Option<u32> {
         return None;    // nothing to write
     }
