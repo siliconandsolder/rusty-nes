@@ -289,7 +289,7 @@ impl<'a> Clocked for Ppu<'a> {
                     }
                     //info!("vAddr after X-transfer: {}\n", self.v);
 
-                    if renderLine {
+                    if !preLine {
 
                         for i in &mut self.vSpriteLine { *i = 0; }
                         self.spriteLineCount = 0;
@@ -407,6 +407,7 @@ impl<'a> Clocked for Ppu<'a> {
         let mut sprPriority: u8 = 0;
 
         if self.fSprEnabled == 1 {
+            self.isZeroBeingRendered = false;
             for i in 0..self.spriteLineCount {
                 if self.vSpriteLine[(i * 4 + 3) as usize] == 0 {
 
@@ -481,8 +482,8 @@ impl<'a> Clocked for Ppu<'a> {
         }
 
         // call draw function here
-        if renderEnabled && self.cycle > 0 && self.cycle < 257 && self.scanLine < SCANLINE_VBLANK_MIN - 1 {
-            self.setPixelColour(self.cycle - 1, self.scanLine.clone(), palette, pixel);
+        if renderEnabled && renderLine && renderCycle {
+            self.setPixelColour(self.cycle - 2, self.scanLine, palette, pixel);
         }
 
 

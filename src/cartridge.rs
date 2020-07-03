@@ -39,8 +39,6 @@ pub struct Cartridge {
     mapperId: u8,
     numPrgBanks: u8,
     numChrBanks: u8,
-    prgMemMax: u32,
-    chrMemMax: u32,
     vPrgMem: Vec<u8>,
     vChrMem: Vec<u8>,
     pMapper: Box<dyn Mapper>,
@@ -105,16 +103,11 @@ impl Cartridge {
 
         let mirror: MIRROR = if header.mapper1 & 0x01 == 1 { VERTICAL } else { HORIZONTAL };
 
-        let prgMemMax = numPrgBanks as u32 * 16384 - 1;
-        let chrMemMax = numChrBanks as u32 * 8192 - 1;
-
         return Cartridge {
             header,
             mapperId,
             numChrBanks,
             numPrgBanks,
-            prgMemMax,
-            chrMemMax,
             vPrgMem: prgMem,
             vChrMem: chrMem,
             pMapper: mapper.unwrap(),
@@ -128,14 +121,18 @@ impl Cartridge {
         if mapAddr.is_none() {
             mapAddr = Some(0);
         }
-        return self.vPrgMem[(mapAddr.unwrap() & self.prgMemMax) as usize];
+        return *self.vPrgMem.get(mapAddr.unwrap() as usize)
+            .unwrap_or_else(|| -> &u8 { &0 });
     }
 
     #[inline]
     pub fn cpuWrite(&mut self, ref addr: u16, val: u8) -> () {
         let mapAddr = self.pMapper.cpuMapWrite(*addr);
         if mapAddr.is_some() {
-            self.vPrgMem[(mapAddr.unwrap() & self.prgMemMax) as usize] = val;
+            match self.vPrgMem.get_mut(mapAddr.unwrap() as usize) {
+                Some(x) => { *x = val; }
+                _=> {}
+            }
         }
     }
 
@@ -145,14 +142,18 @@ impl Cartridge {
         if mapAddr.is_none() {
             mapAddr = Some(0);
         }
-        return self.vChrMem[(mapAddr.unwrap() & self.chrMemMax) as usize];
+        return *self.vChrMem.get(mapAddr.unwrap() as usize)
+            .unwrap_or_else(|| -> &u8 { &0 });
     }
 
     #[inline]
     pub fn ppuWrite(&mut self, ref addr: u16, val: u8) -> () {
         let mapAddr = self.pMapper.ppuMapWrite(*addr);
         if mapAddr.is_some() {
-            self.vChrMem[(mapAddr.unwrap() & self.chrMemMax) as usize] = val;
+            match self.vChrMem.get_mut(mapAddr.unwrap() as usize) {
+                Some(x) => { *x = val; }
+                _=> {}
+            }
         }
     }
 

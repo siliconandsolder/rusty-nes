@@ -17,6 +17,7 @@ use std::path::Path;
 use sdl2::EventPump;
 use self::sdl2::pixels::{Color, PixelFormatEnum};
 use crate::ppu_bus::PpuBus;
+use crate::controller::Controller;
 
 const MASTER_CLOCK_NANO: u8 = 47; // should be about 46.56, but the std::thread functions don't allow decimals
 
@@ -25,7 +26,6 @@ pub struct Console<'a> {
 	ppu: Rc<RefCell<Ppu<'a>>>,
 	bus: Rc<RefCell<DataBus<'a>>>,
 	cartridge: Rc<RefCell<Cartridge>>,
-	eventPump: Rc<RefCell<EventPump>>
 }
 
 impl<'a> Console<'a> {
@@ -49,8 +49,10 @@ impl<'a> Console<'a> {
 		canvas.set_draw_color(Color::RGB(0,0,0));
 		canvas.present();
 
+		let controller1 = Rc::new(RefCell::new(Controller::new(eventPump)));
 		let cartridge = Rc::new(RefCell::new(Cartridge::new(game)));
 		let bus = Rc::new(RefCell::new(DataBus::new()));
+		bus.borrow_mut().attachController1(controller1);
 		bus.borrow_mut().attachCartridge(cartridge.clone());
 		let cpu = Rc::new(RefCell::new(Cpu::new(bus.clone())));
 		bus.borrow_mut().attachCpu(cpu.clone());
@@ -63,7 +65,6 @@ impl<'a> Console<'a> {
 			ppu,
 			bus,
 			cartridge,
-			eventPump
 		}
 	}
 }
@@ -96,20 +97,23 @@ impl<'a> Clocked for Console<'a> {
 				//println!("Nanoseconds: {}", now.elapsed().unwrap().as_nanos());
 			}
 
-			for event in self.eventPump.borrow_mut().poll_iter() {
-				match event {
-					sdl2::event::Event::Quit {..} => break 'game,
-					sdl2::event::Event::KeyDown {..} => break 'game,
-					_ => {},
-				}
-			}
-			fps += 1;
 
-			if now.elapsed().unwrap().as_secs() >= 1 {
-				println!("FPS: {}", fps);
-				fps = 0;
-				now = SystemTime::now();
-			}
+
+			// for event in self.eventPump.borrow_mut().poll_iter() {
+			// 	match event {
+			// 		sdl2::event::Event::Quit {..} => break 'game,
+			// 		sdl2::event::Event::KeyDown {..} => break 'game,
+			// 		_ => {},
+			// 	}
+			// }
+			self.bus.borrow_mut().getControllerInput();
+			// fps += 1;
+			//
+			// if now.elapsed().unwrap().as_secs() >= 1 {
+			// 	println!("FPS: {}", fps);
+			// 	fps = 0;
+			// 	now = SystemTime::now();
+			// }
 
 			// wait if we were too fast
 			// let timeDiff: i128 = (MASTER_CLOCK_NANO as u128 - now.elapsed().unwrap().as_nanos()) as i128;

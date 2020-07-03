@@ -9,6 +9,8 @@ use crate::cpu::*;
 use crate::ppu::*;
 use crate::cartridge::{Cartridge, MIRROR};
 use crate::palette::*;
+use crate::controller::Controller;
+use crate::clock::Clocked;
 
 // Split the buses in two. One for CPU-PPU intercommunication, one for PPU data reads and writes.
 
@@ -17,7 +19,8 @@ pub struct DataBus<'a> {
 
     cpu: Option<Rc<RefCell<Cpu<'a>>>>,
     ppu: Option<Rc<RefCell<Ppu<'a>>>>,
-    cartridge: Option<Rc<RefCell<Cartridge>>>
+    cartridge: Option<Rc<RefCell<Cartridge>>>,
+    controller1: Option<Rc<RefCell<Controller>>>
 }
 
 impl<'a> DataBus<'a> {
@@ -26,20 +29,25 @@ impl<'a> DataBus<'a> {
             cpuMem: vec![0; 0x0800],
             cpu: None,
             ppu: None,
-            cartridge: None
+            cartridge: None,
+            controller1: None
         }
     }
 
     pub fn attachPpu(&mut self, ppuRef: Rc<RefCell<Ppu<'a>>>) -> () {
-        self.ppu = Some(Rc::from(ppuRef));
+        self.ppu = Some(ppuRef);
     }
 
     pub fn attachCpu(&mut self, cpuRef: Rc<RefCell<Cpu<'a>>>) -> () {
-        self.cpu = Some(Rc::from(cpuRef));
+        self.cpu = Some(cpuRef);
     }
 
     pub fn attachCartridge(&mut self, cartRef: Rc<RefCell<Cartridge>>) -> () {
-        self.cartridge = Some(Rc::from(cartRef))
+        self.cartridge = Some(cartRef)
+    }
+
+    pub fn attachController1(&mut self, con1Ref: Rc<RefCell<Controller>>) -> () {
+        self.controller1 = Some(con1Ref);
     }
 
     #[inline]
@@ -52,10 +60,10 @@ impl<'a> DataBus<'a> {
             self.ppu.as_ref().unwrap().borrow_mut().writeMem(*addr & 0x0007, val);
         }
         else if *addr == 0x4016 {
-            // controller one stuff goes here
+            self.controller1.as_ref().unwrap().borrow_mut().writeState(val);
         }
         else if *addr == 0x4017 {
-            // controller two stuff goes here
+
         }
         else {
             self.cartridge.as_ref().unwrap().borrow_mut().cpuWrite(*addr, val);
@@ -71,8 +79,7 @@ impl<'a> DataBus<'a> {
             return self.ppu.as_ref().unwrap().borrow_mut().readMem(*addr & 0x0007).clone();
         }
         else if *addr == 0x4016 {
-            // controller one stuff goes here
-            return 0;
+           return self.controller1.as_ref().unwrap().borrow_mut().getState();
         }
         else if *addr == 0x4017 {
             // controller two stuff goes here
@@ -86,6 +93,11 @@ impl<'a> DataBus<'a> {
     #[inline]
     pub fn cpuWriteOam(&mut self, val: u8) -> () {
         self.ppu.as_ref().unwrap().borrow_mut().cpuWriteOam(val);
+    }
+
+    #[inline]
+    pub fn getControllerInput(&mut self) -> () {
+        self.controller1.as_ref().unwrap().borrow_mut().cycle();
     }
 
     pub fn ppuTriggerNMI(&mut self) -> () {

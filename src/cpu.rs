@@ -133,7 +133,7 @@ impl<'a> Clocked for Cpu<'a> {
         let (target, bytes, increment, boundaryCrossed) = self.getAddressInfo(opInfo.opCode, opInfo.addrMode, self.pgmCounter.wrapping_add(1));
 
         // print!("PC: {:04X}, A: {:02X}, X: {:02X}, Y: {:02X}, P: {:02X}, SP: {:02X}, INST: {:?}\n",
-        //                            self.pgmCounter, self.regA, self.regX, self.regY, self.getFlagValues(), self.stkPointer, opCode);
+        //                            self.pgmCounter, self.regA, self.regX, self.regY, self.getFlagValues(), self.stkPointer, opInfo.opCode);
 
         // if self.pgmCounter == 0xC66E || self.counter == 8991 {
         //     panic!("DONE!");
@@ -532,7 +532,8 @@ impl<'a> Cpu<'a> {
     }
 
     fn eor(&mut self, target: Option<u16>) -> () {
-        self.regA ^= self.readMem8(target.unwrap());
+		let address = target.unwrap();
+        self.regA ^= self.readMem8(address);
         self.setZNFlag(self.regA);
     }
 
@@ -998,7 +999,6 @@ impl<'a> Cpu<'a> {
         self.flags.zero =       (status >> ZERO_POS) & 1;
         self.flags.interrupt =  (status >> INT_POS) & 1;
         self.flags.decimal =    (status >> DEC_POS) & 1;
-        //self.flags.brk =        (status >> BRK_POS) & 1;
         self.flags.unused =     1;
         self.flags.overflow =   (status >> OVER_POS) & 1;
         self.flags.negative =   (status >> NEG_POS) & 1;
@@ -1011,7 +1011,6 @@ impl<'a> Cpu<'a> {
         status |= ((self.flags.zero & 1) << ZERO_POS);
         status |= ((self.flags.interrupt & 1) << INT_POS);
         status |= ((self.flags.decimal & 1) << DEC_POS);
-        //status |= ((self.flags.brk & 1) << BRK_POS);
         status |= (1 << U_POS);
         status |= ((self.flags.overflow & 1) << OVER_POS);
         status |= ((self.flags.negative & 1) << NEG_POS);

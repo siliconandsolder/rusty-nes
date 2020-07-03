@@ -1,5 +1,6 @@
 pub mod clock;
 pub mod palette;
+pub mod controller;
 pub mod data_bus;
 pub mod ppu_bus;
 pub mod save_load;

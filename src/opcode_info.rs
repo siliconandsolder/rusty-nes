@@ -135,8 +135,8 @@ pub const OPCODE_INSTRUCTIONS: [OpcodeInfo; 256] = [
 	OpcodeInfo::new(OpMnemonic::EOR, ABS_Y, 4, 1, 3),
 	OpcodeInfo::new(OpMnemonic::NOP, IMP, 2, 0, 3),
 	OpcodeInfo::new(OpMnemonic::SRE, ABS_Y, 7, 1, 3),
-	OpcodeInfo::new(OpMnemonic::EOR, ABS_X, 4, 1, 3),
 	OpcodeInfo::new(OpMnemonic::NOP, ABS_X, 4, 1, 3),
+	OpcodeInfo::new(OpMnemonic::EOR, ABS_X, 4, 1, 3),
 	OpcodeInfo::new(OpMnemonic::LSR, ABS_X, 7, 0, 3),
 	OpcodeInfo::new(OpMnemonic::SRE, ABS_X, 7, 0, 3),
 
