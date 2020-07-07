@@ -1,9 +1,10 @@
 #![allow(non_snake_case)]
 #![allow(warnings)]
 
-use crate::cartridge::{MIRROR, Cartridge};
 use std::cell::RefCell;
 use std::rc::Rc;
+use crate::cartridge::Cartridge;
+use crate::mapper::MIRROR;
 
 pub struct PpuBus {
 	tblPalette: Vec<u8>,
@@ -32,7 +33,7 @@ impl PpuBus {
 		else if addr < 0x3F00 {
 			let realAddr = addr & 0x0FFF;
 
-			match *self.cart.borrow().getMirrorType() {
+			match self.cart.borrow().getMirrorType() {
 				MIRROR::HORIZONTAL => {
 					return match realAddr {
 						a if a < 0x0800 => { self.tblName[(a & 0x03FF) as usize].clone() }
@@ -42,7 +43,7 @@ impl PpuBus {
 				MIRROR::VERTICAL => {
 						 return self.tblName[(realAddr & 0x07FF) as usize].clone();
 				},
-				_ => { panic!("Unrecognized Mirror Type: {:?}", *self.cart.borrow().getMirrorType()); }
+				_ => { panic!("Unrecognized Mirror Type: {:?}", self.cart.borrow().getMirrorType()); }
 			}
 
 		}
@@ -63,7 +64,7 @@ impl PpuBus {
 		else if addr < 0x3F00 {
 			//let realAddr = addr & 0x0FFF;
 
-			match *self.cart.borrow().getMirrorType() {
+			match self.cart.borrow().getMirrorType() {
 				MIRROR::HORIZONTAL => {
 					match addr {
 						a if a < 0x2800 => { self.tblName[(a & 0x03FF) as usize] = val; }
@@ -73,7 +74,7 @@ impl PpuBus {
 				MIRROR::VERTICAL => {
 						self.tblName[(addr & 0x07FF) as usize]  = val;
 				},
-				_ => { panic!("Unrecognized Mirror Type: {:?}", *self.cart.borrow().getMirrorType()); }
+				_ => { panic!("Unrecognized Mirror Type: {:?}", self.cart.borrow().getMirrorType()); }
 			}
 		}
 		else if addr < 0x4000 {

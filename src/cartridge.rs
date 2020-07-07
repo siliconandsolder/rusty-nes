@@ -7,18 +7,15 @@ use std::mem;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::ptr::{slice_from_raw_parts, slice_from_raw_parts_mut};
-use crate::mapper::Mapper;
+use crate::mapper::{Mapper, MIRROR};
 use crate::mapper0::Mapper0;
-use std::borrow::BorrowMut;
-use crate::cartridge::MIRROR::{VERTICAL, HORIZONTAL};
+use std::borrow::{BorrowMut, Borrow};
+use crate::mapper::MIRROR::*;
+use crate::mapper1::Mapper1;
 
-#[derive(Debug, Copy, Clone)]
-pub enum MIRROR {
-    HORIZONTAL,
-    VERTICAL,
-    ONESCREEN_LO,
-    ONESCREEN_HI
-}
+const PRG_RAM_START: u16 = 0x6000;
+const PRG_RAM_END: u16 = 0x7FFF;
+
 
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
@@ -42,7 +39,8 @@ pub struct Cartridge {
     vPrgMem: Vec<u8>,
     vChrMem: Vec<u8>,
     pMapper: Box<dyn Mapper>,
-    mirror: MIRROR
+    mirror: MIRROR,
+    hasPrgRam: bool,
 }
 
 impl Cartridge {
@@ -95,13 +93,16 @@ impl Cartridge {
         }
 
         let mut mapper: Option<Box<dyn Mapper>> = None;
+        let mirror: MIRROR = if header.mapper1 & 0x01 == 1 { VERTICAL } else { HORIZONTAL };
 
         match mapperId {
-            0 => { mapper = Some(Box::new(Mapper0::new(numPrgBanks, numChrBanks))) }
+            0 => { mapper = Some(Box::new(Mapper0::new(numPrgBanks, numChrBanks, mirror))) }
+            1 => { mapper = Some(Box::new(Mapper1::new(numPrgBanks, numChrBanks))) }
             _ => panic!("Unknown mapper: {}", mapperId)
         }
 
-        let mirror: MIRROR = if header.mapper1 & 0x01 == 1 { VERTICAL } else { HORIZONTAL };
+        let hasPrgRam = header.mapper1 & 2 == 2;
+
 
         return Cartridge {
             header,
@@ -111,15 +112,25 @@ impl Cartridge {
             vPrgMem: prgMem,
             vChrMem: chrMem,
             pMapper: mapper.unwrap(),
-            mirror
+            mirror,
+            hasPrgRam,
         }
     }
 
     #[inline]
     pub fn cpuRead(&mut self, ref addr: u16) -> u8 {
 		let mut mapAddr = self.pMapper.cpuMapRead(*addr);
+
+        // check if PRG RAM
+        if self.hasPrgRam && *addr >= PRG_RAM_START && *addr <= PRG_RAM_END {
+            if mapAddr.is_none() {
+                return 0;
+            }
+            return mapAddr.unwrap() as u8;
+        }
+
         if mapAddr.is_none() {
-            mapAddr = Some(0);
+            return 0;
         }
         return *self.vPrgMem.get(mapAddr.unwrap() as usize)
             .unwrap_or_else(|| -> &u8 { &0 });
@@ -127,7 +138,8 @@ impl Cartridge {
 
     #[inline]
     pub fn cpuWrite(&mut self, ref addr: u16, val: u8) -> () {
-        let mapAddr = self.pMapper.cpuMapWrite(*addr);
+		// no need to check if battery-backed PRG RAM because we're not returning anything
+        let mapAddr = self.pMapper.cpuMapWrite(*addr, val);
         if mapAddr.is_some() {
             match self.vPrgMem.get_mut(mapAddr.unwrap() as usize) {
                 Some(x) => { *x = val; }
@@ -140,7 +152,7 @@ impl Cartridge {
     pub fn ppuRead(&mut self, ref addr: u16) -> u8 {
         let mut mapAddr = self.pMapper.ppuMapRead(*addr);
         if mapAddr.is_none() {
-            mapAddr = Some(0);
+           return 0;
         }
         return *self.vChrMem.get(mapAddr.unwrap() as usize)
             .unwrap_or_else(|| -> &u8 { &0 });
@@ -148,7 +160,7 @@ impl Cartridge {
 
     #[inline]
     pub fn ppuWrite(&mut self, ref addr: u16, val: u8) -> () {
-        let mapAddr = self.pMapper.ppuMapWrite(*addr);
+        let mapAddr = self.pMapper.ppuMapWrite(*addr, val);
         if mapAddr.is_some() {
             match self.vChrMem.get_mut(mapAddr.unwrap() as usize) {
                 Some(x) => { *x = val; }
@@ -157,7 +169,7 @@ impl Cartridge {
         }
     }
 
-    pub fn getMirrorType(&self) -> &MIRROR {
-        return &self.mirror;
+    pub fn getMirrorType(&self) -> MIRROR {
+        return self.pMapper.as_ref().borrow().getMirrorType();
     }
 }

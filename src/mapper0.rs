@@ -1,18 +1,20 @@
 #![allow(non_snake_case)]
 #![allow(warnings)]
 
-use crate::mapper::Mapper;
+use crate::mapper::{Mapper, MIRROR};
 
 pub struct Mapper0 {
     numPrgBanks: u8,
-    numChrBanks: u8
+    numChrBanks: u8,
+    mirrorType: MIRROR
 }
 
 impl Mapper0 {
-    pub fn new(numPrgBanks: u8, numChrBanks: u8) -> Self {
+    pub fn new(numPrgBanks: u8, numChrBanks: u8, mirrorType: MIRROR) -> Self {
         Mapper0 {
             numPrgBanks,
-            numChrBanks
+            numChrBanks,
+            mirrorType
         }
     }
 }
@@ -31,7 +33,7 @@ impl Mapper for Mapper0 {
     }
 
     #[inline]
-    fn cpuMapWrite(&mut self, ref addr: u16) -> Option<u32> {
+    fn cpuMapWrite(&mut self, ref addr: u16, val: u8) -> Option<u32> {
         if *addr >= 0x8000 && *addr <= 0xFFFF {
             return match self.numPrgBanks {
                 1 => Some((*addr & 0x3FFF) as u32),
@@ -52,7 +54,12 @@ impl Mapper for Mapper0 {
     }
 
     #[inline]
-    fn ppuMapWrite(&mut self, ref addr: u16) -> Option<u32> {
+    fn ppuMapWrite(&mut self, ref addr: u16, val: u8) -> Option<u32> {
         return None;    // nothing to write
+    }
+
+    #[inline]
+    fn getMirrorType(&self) -> MIRROR {
+         return self.mirrorType;
     }
 }

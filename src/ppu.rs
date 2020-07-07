@@ -340,7 +340,7 @@ impl<'a> Clocked for Ppu<'a> {
                         let sprY = self.vSpriteLine[(i * 4) as usize].clone() as u16;
                         let mut sprTile = self.vSpriteLine[(i * 4 + 1) as usize].clone() as u16;
                         let sprAttr = self.vSpriteLine[(i * 4 + 2) as usize].clone() as u16;
-                        let mut row = self.scanLine - sprY;
+                        let mut row = self.scanLine as i32 - sprY as i32;
 
                         let mut sprAddress: u16 = 0;
 
@@ -349,7 +349,7 @@ impl<'a> Clocked for Ppu<'a> {
                             if sprAttr & 0x80 == 0x80 {
                                 row = 7 - row;
                             }
-                            sprAddress = ((self.fSprTile as u16) << 12) | (sprTile << 4) | row;
+                            sprAddress = ((self.fSprTile as u16) << 12) | (sprTile << 4) | row as u16;
                         } else {
                             // sprite flipped vertically
                             if sprAttr & 0x80 == 0x80 {
@@ -362,7 +362,7 @@ impl<'a> Clocked for Ppu<'a> {
                                 sprTile += 1;
                                 row -= 8;
                             }
-                            sprAddress = (flagTile << 12) | (sprTile << 4) | row;
+                            sprAddress = (flagTile << 12) | (sprTile << 4) | row as u16;
                         }
 
                         // sprPatAddrHi = sprPatAddrLo + 8;
@@ -697,8 +697,8 @@ impl<'a> Ppu<'a> {
     fn ppuDataRead(&mut self) -> u8 {
 
         let mut tempBufData: u8 = 0;
-        let vPtr = &self.v;
-        let mut ppuData = self.ppuBus.readPpuMem(*vPtr);
+        let vPtr = *&self.v;
+        let mut ppuData = self.ppuBus.readPpuMem(vPtr);
 
         if (self.v & 0x3F00) < 0x3F00 {
             tempBufData = self.bufData;
@@ -707,7 +707,7 @@ impl<'a> Ppu<'a> {
         }
         else {
             // maps to nametable under the palette (palette address minus 0x1000)
-            self.bufData = self.ppuBus.readPpuMem(*vPtr - 0x1000);
+            self.bufData = self.ppuBus.readPpuMem(vPtr - 0x1000);
         }
 
         self.v = if self.fIncMode == 0 { self.v.wrapping_add(1) } else { self.v.wrapping_add(32) };

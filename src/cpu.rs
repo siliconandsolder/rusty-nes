@@ -132,8 +132,8 @@ impl<'a> Clocked for Cpu<'a> {
         let opInfo = &OPCODE_INSTRUCTIONS[self.readMem8(self.pgmCounter) as usize];
         let (target, bytes, increment, boundaryCrossed) = self.getAddressInfo(opInfo.opCode, opInfo.addrMode, self.pgmCounter.wrapping_add(1));
 
-        // print!("PC: {:04X}, A: {:02X}, X: {:02X}, Y: {:02X}, P: {:02X}, SP: {:02X}, INST: {:?}\n",
-        //                            self.pgmCounter, self.regA, self.regX, self.regY, self.getFlagValues(), self.stkPointer, opInfo.opCode);
+        print!("PC: {:04X}, A: {:02X}, X: {:02X}, Y: {:02X}, P: {:02X}, SP: {:02X}, INST: {:?}\n",
+                                   self.pgmCounter, self.regA, self.regX, self.regY, self.getFlagValues(), self.stkPointer, opInfo.opCode);
 
         // if self.pgmCounter == 0xC66E || self.counter == 8991 {
         //     panic!("DONE!");

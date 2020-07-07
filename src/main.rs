@@ -18,7 +18,8 @@ fn main() {
 	// 	]
 	// ).unwrap();
 
-	let path = Path::new("./super_mario_bros.nes");
+	let path = Path::new("./tests/instr_test-v5/rom_singles/01-basics.nes");
+	//let path = Path::new("./loz.nes");
 	let mut console = Console::new(path);
 	console.cycle();
 }
