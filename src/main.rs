@@ -12,7 +12,7 @@ fn main() {
 	// ).unwrap();
 
 	// TODO: Fix SHY, SHX
-	let path = Path::new("./tests/ppu_sprite_hit/rom_singles/01-basics.nes");
+	let path = Path::new("./tests/ppu_vbl_nmi/rom_singles/01-vbl_basics.nes");
 	//let path = Path::new("./super_mario_bros.nes");
 	let mut console = Console::new(path);
 	console.cycle();
