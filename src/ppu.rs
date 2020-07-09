@@ -188,25 +188,7 @@ impl<'a> Clocked for Ppu<'a> {
                 self.sprShiftPatLo[i] = 0;
                 self.sprShiftPatHi[i] = 0;
             }
-
-
         }
-
-        // if !self.canTrigNmi && self.nmiDelay > 0 {
-        //     self.nmiDelay -= 1;
-        //     if self.nmiDelay == 0 {
-        //         self.dataBus.borrow_mut().ppuTriggerNMI();
-        //     }
-        // }
-        //
-        // if self.fNmi == 1 && self.nmiOccured && self.canTrigNmi {
-        //     self.canTrigNmi = false;
-        //     self.nmiDelay = 15;
-        // }
-
-        // if self.cycle >= 257 && self.cycle <= 320 {
-        //     self.oamAddr = 0;
-        // }
 
         if renderEnabled {
             if (renderLine || preLine) && (renderCycle || fetchCycle) {
