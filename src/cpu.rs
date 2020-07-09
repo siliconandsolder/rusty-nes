@@ -197,12 +197,12 @@ impl<'a> Cpu<'a> {
         match opCode {
             OpMnemonic::ADC => { self.adc(target) },
             OpMnemonic::AHX => {}
-            OpMnemonic::ANC => {}
+            OpMnemonic::ANC => { self.anc(target) }
             OpMnemonic::AND => { self.and(target) },
-            OpMnemonic::ALR => {}
-            OpMnemonic::ARR => {}
+            OpMnemonic::ALR => { self.alr(target) },
+            OpMnemonic::ARR => { self.arr(target) },
             OpMnemonic::ASL => { self.asl(target) },
-            OpMnemonic::AXS => {}
+            OpMnemonic::AXS => { self.axs(target) },
             OpMnemonic::BCC => { self.bcc(target) },
             OpMnemonic::BCS => { self.bcs(target) },
             OpMnemonic::BEQ => { self.beq(target) },
@@ -255,8 +255,8 @@ impl<'a> Cpu<'a> {
             OpMnemonic::SEC => { self.sec(target) },
             OpMnemonic::SED => { self.sed(target) },
             OpMnemonic::SEI => { self.sei(target) },
-            OpMnemonic::SHY => {}
-            OpMnemonic::SHX => {}
+            OpMnemonic::SHY => { self.shy(target) }
+            OpMnemonic::SHX => { self.shx(target) }
             OpMnemonic::SLO => { self.slo(target) },
             OpMnemonic::SRE => { self.sre(target) },
             OpMnemonic::STA => { self.sta(target) },
@@ -343,14 +343,14 @@ impl<'a> Cpu<'a> {
     }
 
     fn adc(&mut self, target: Option<u16>) ->() {
-        let oldVal = self.readMem8(target.unwrap());
-        let newVal = oldVal.wrapping_add(self.regA).wrapping_add(self.flags.carry);
+        let oldVal = self.readMem8(target.unwrap()) as u16;
+        let newVal = oldVal.wrapping_add(self.regA as u16).wrapping_add(self.flags.carry as u16);
 
-        self.flags.carry = if newVal < oldVal {1} else {0};
+        self.flags.carry = if newVal > 0xFF { 1 } else { 0 };
 
         // !((M^N) & 0x80) && ((M^result) & 0x80)
         // if the inputs have the same sign, and the input and result have different signs
-        if ((self.regA ^ oldVal) & 0x80) == 0 && ((self.regA ^ newVal) & 0x80) != 0 {
+        if ((self.regA as u16 ^ oldVal) & 0x80) == 0 && ((self.regA as u16 ^ newVal) & 0x80) != 0 {
             self.flags.overflow = 1;
         }
         else {
@@ -358,13 +358,36 @@ impl<'a> Cpu<'a> {
         }
 
         // set negative and zero flag
-        self.setZNFlag(newVal);
-        self.regA = newVal;
+        self.setZNFlag(newVal as u8);
+        self.regA = newVal as u8;
+    }
+
+    fn anc(&mut self, target: Option<u16>) -> () {
+        self.and(target);
+        self.flags.carry = self.flags.negative;
     }
 
     fn and(&mut self, target: Option<u16>) -> () {
         self.regA &= self.readMem8(target.unwrap());
         self.setZNFlag(self.regA);
+    }
+
+    fn alr(&mut self, target: Option<u16>) -> () {
+        self.regA &= self.readMem8(target.unwrap());
+        self.flags.carry = if self.regA & 1 == 1 { 1 } else { 0 };
+        self.regA >>= 1;
+        self.setZNFlag(self.regA);
+    }
+
+    fn arr(&mut self, target: Option<u16>) -> () {
+        self.and(target);
+        self.ror(None);
+
+        let bitFive = (self.regA & 0x20) >> 5;
+        let bitSix = (self.regA & 0x40) >> 6;
+
+        self.flags.overflow = bitSix ^ bitFive;
+        self.flags.carry = bitSix;
     }
 
     fn asl(&mut self, target: Option<u16>) -> () {
@@ -384,6 +407,21 @@ impl<'a> Cpu<'a> {
             self.setZNFlag(val);
             self.writeMem8(target.unwrap(), val);
         }
+    }
+
+    // adc, alr
+
+    fn axs(&mut self, target: Option<u16>) -> () {
+        let val = self.readMem8(target.unwrap());
+        let result = (self.regA & self.regX).wrapping_sub(val);
+
+        self.flags.carry = 0;
+        if (self.regA & self.regX) >= val {
+            self.flags.carry = 1;
+        }
+
+        self.regX = result;
+        self.setZNFlag(self.regX);
     }
 
     fn bcc(&mut self, target: Option<u16>) -> () {
@@ -432,15 +470,17 @@ impl<'a> Cpu<'a> {
     }
 
     fn brk(&mut self, target: Option<u16>) -> () {
+        self.pgmCounter += 1;   // on a 6502, BRK advances the program counter by one
         let hi = (self.pgmCounter >> 8) as u8;
         let lo = (self.pgmCounter & 0x00FF) as u8;
         self.pushStack(hi);
         self.pushStack(lo);
+
+        self.flags.brk = 1;
         self.php(None);
         self.sei(None);
 
         self.pgmCounter = self.readMem16(0xFFFE);
-        self.flags.brk = 1;
     }
 
     fn bvc(&mut self, target: Option<u16>) -> () {
@@ -715,7 +755,6 @@ impl<'a> Cpu<'a> {
         let newVal = self.regA.wrapping_sub(oldVal).wrapping_sub(1 - self.flags.carry);
 
         let newValInt = self.regA as i32 - oldVal as i32 - (1 - self.flags.carry as i32);
-
         self.flags.carry = if newValInt >= 0 { 1 } else { 0 };
 
         // !((M^N) & 0x80) && ((M^result) & 0x80)
@@ -742,6 +781,16 @@ impl<'a> Cpu<'a> {
 
     fn sei(&mut self, target: Option<u16>) -> () {
         self.flags.interrupt = 1;
+    }
+
+    fn shy(&mut self, target: Option<u16>) -> () {
+        let address = self.readMem16(target.unwrap());
+        self.writeMem8(address, (self.regY & ((address >> 8).wrapping_add(1)) as u8));
+    }
+
+    fn shx(&mut self, target: Option<u16>) -> () {
+        let address = self.readMem16(target.unwrap());
+        self.writeMem8(address, (self.regX & ((address >> 8).wrapping_add(1)) as u8));
     }
 
     fn slo(&mut self, target: Option<u16>) -> () {
@@ -999,6 +1048,7 @@ impl<'a> Cpu<'a> {
         self.flags.zero =       (status >> ZERO_POS) & 1;
         self.flags.interrupt =  (status >> INT_POS) & 1;
         self.flags.decimal =    (status >> DEC_POS) & 1;
+        self.flags.brk =        1;
         self.flags.unused =     1;
         self.flags.overflow =   (status >> OVER_POS) & 1;
         self.flags.negative =   (status >> NEG_POS) & 1;
@@ -1011,6 +1061,7 @@ impl<'a> Cpu<'a> {
         status |= ((self.flags.zero & 1) << ZERO_POS);
         status |= ((self.flags.interrupt & 1) << INT_POS);
         status |= ((self.flags.decimal & 1) << DEC_POS);
+        status |= (1 << BRK_POS);
         status |= (1 << U_POS);
         status |= ((self.flags.overflow & 1) << OVER_POS);
         status |= ((self.flags.negative & 1) << NEG_POS);

@@ -90,10 +90,10 @@ impl<'a> Clocked for Console<'a> {
 
 			// one frame (approximately)
 			for i in 0..29781 {
+				self.ppu.borrow_mut().cycle();
+				self.ppu.borrow_mut().cycle();
+				self.ppu.borrow_mut().cycle();
 				self.cpu.borrow_mut().cycle();
-				self.ppu.borrow_mut().cycle();
-				self.ppu.borrow_mut().cycle();
-				self.ppu.borrow_mut().cycle();
 				//println!("Nanoseconds: {}", now.elapsed().unwrap().as_nanos());
 			}
 

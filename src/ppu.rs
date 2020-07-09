@@ -170,13 +170,17 @@ impl<'a> Clocked for Ppu<'a> {
 
         if self.scanLine == SCANLINE_VBLANK_MIN && self.cycle == 1 {
             self.nmiOccured = true;
+
+            if self.fNmi == 1 {
+                self.dataBus.borrow_mut().ppuTriggerNMI();
+            }
         }
 
         if self.scanLine == SCANLINE_MAX && self.cycle == 1 {
             self.fSprZero = 0;
             self.nmiOccured = false;
-            self.canTrigNmi = true;
-            self.nmiDelay = 0;
+            //self.canTrigNmi = true;
+            //self.nmiDelay = 0;
 
             // wipe sprites for next scanline
             self.fSprOver = 0;
@@ -184,19 +188,21 @@ impl<'a> Clocked for Ppu<'a> {
                 self.sprShiftPatLo[i] = 0;
                 self.sprShiftPatHi[i] = 0;
             }
+
+
         }
 
-        if !self.canTrigNmi && self.nmiDelay > 0 {
-            self.nmiDelay -= 1;
-            if self.nmiDelay == 0 {
-                self.dataBus.borrow_mut().ppuTriggerNMI();
-            }
-        }
-
-        if self.fNmi == 1 && self.nmiOccured && self.canTrigNmi {
-            self.canTrigNmi = false;
-            self.nmiDelay = 15;
-        }
+        // if !self.canTrigNmi && self.nmiDelay > 0 {
+        //     self.nmiDelay -= 1;
+        //     if self.nmiDelay == 0 {
+        //         self.dataBus.borrow_mut().ppuTriggerNMI();
+        //     }
+        // }
+        //
+        // if self.fNmi == 1 && self.nmiOccured && self.canTrigNmi {
+        //     self.canTrigNmi = false;
+        //     self.nmiDelay = 15;
+        // }
 
         // if self.cycle >= 257 && self.cycle <= 320 {
         //     self.oamAddr = 0;
@@ -606,9 +612,9 @@ impl<'a> Ppu<'a> {
         self.fMaster = (val >> 6) & 1;
         self.fNmi = (val >> 7) & 1;
 
-        if self.nmiDelay == 0 {
-            self.canTrigNmi = true;
-        }
+        // if self.nmiDelay == 0 {
+        //     self.canTrigNmi = true;
+        // }
 
         //info!("PPUCTRL val: {}, tAddr before PPUCTRL write: {}\n", val, self.t);
         self.t = (self.t & 0xF3FF) | (((val & 0x03) as u16) << 10);
