@@ -490,6 +490,7 @@ impl<'a> Clocked for Ppu<'a> {
                 }
             }
         }
+        // println!("Cycle: {}, Scanline: {}", self.cycle, self.scanLine);
     }
 }
 

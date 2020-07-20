@@ -14,6 +14,7 @@ use std::convert::TryFrom;
 use std::any::Any;
 use std::fs::File;
 use std::io::Write;
+use crate::opcode_info::OpCode::BRK;
 
 const CARRY_POS: u8 = 0;
 const ZERO_POS: u8  = 1;
@@ -132,8 +133,8 @@ impl<'a> Clocked for Cpu<'a> {
         let opInfo = &OPCODE_INSTRUCTIONS[self.readMem8(self.pgmCounter) as usize];
         let (target, bytes, increment, boundaryCrossed) = self.getAddressInfo(opInfo.opCode, opInfo.addrMode, self.pgmCounter.wrapping_add(1));
 
-        print!("PC: {:04X}, A: {:02X}, X: {:02X}, Y: {:02X}, P: {:02X}, SP: {:02X}, INST: {:?}\n",
-                                   self.pgmCounter, self.regA, self.regX, self.regY, self.getFlagValues(), self.stkPointer, opInfo.opCode);
+        // print!("PC: {:04X}, A: {:02X}, X: {:02X}, Y: {:02X}, P: {:02X}, SP: {:02X}, INST: {:?}\n",
+        //                            self.pgmCounter, self.regA, self.regX, self.regY, self.getFlagValues(), self.stkPointer, opInfo.opCode);
 
         // if self.pgmCounter == 0xC66E || self.counter == 8991 {
         //     panic!("DONE!");
@@ -143,7 +144,7 @@ impl<'a> Clocked for Cpu<'a> {
         self.executeInstruction(opInfo.opCode, target);
 
         // we add cycles so that potential interrupt cycles are not erased
-        self.waitCycles += opInfo.cycles as u16;
+        self.waitCycles += (opInfo.cycles as u16) - 1;
         if boundaryCrossed { self.waitCycles += opInfo.xCycles as u16; }
 
         // debug print
@@ -846,7 +847,7 @@ impl<'a> Cpu<'a> {
     }
 
     #[inline]
-    fn getAddressInfo(&self, ref opCode: OpMnemonic, ref addrMode: AddressMode, oper: u16) -> (Option<u16>, u16, bool, bool) {
+    fn getAddressInfo(&mut self, ref opCode: OpMnemonic, ref addrMode: AddressMode, oper: u16) -> (Option<u16>, u16, bool, bool) {
         // target address (option)
         // bytes to increment
         // PC should increment
@@ -929,7 +930,13 @@ impl<'a> Cpu<'a> {
                     target = target.wrapping_sub(0x100);
                 }
 
-                return (Some(target), 2, !self.branchIncrement(*opCode), target & 0xFF00 != (oper.wrapping_sub(1)) & 0xFF00);
+                let branching = self.branchIncrement(*opCode);
+
+                if branching {
+                    self.waitCycles += 1;
+                }
+
+                return (Some(target), 2, !branching, target & 0xFF00 != (oper.wrapping_sub(1)) & 0xFF00);
             }
             AddressMode::ZeroPage => {
                 let target = self.readMem8(oper) as u16;
@@ -1048,7 +1055,7 @@ impl<'a> Cpu<'a> {
         self.flags.zero =       (status >> ZERO_POS) & 1;
         self.flags.interrupt =  (status >> INT_POS) & 1;
         self.flags.decimal =    (status >> DEC_POS) & 1;
-        self.flags.brk =        1;
+        self.flags.brk =        (status >> BRK_POS) & 1;
         self.flags.unused =     1;
         self.flags.overflow =   (status >> OVER_POS) & 1;
         self.flags.negative =   (status >> NEG_POS) & 1;
@@ -1061,7 +1068,7 @@ impl<'a> Cpu<'a> {
         status |= ((self.flags.zero & 1) << ZERO_POS);
         status |= ((self.flags.interrupt & 1) << INT_POS);
         status |= ((self.flags.decimal & 1) << DEC_POS);
-        status |= (1 << BRK_POS);
+        status |= ((self.flags.brk & 1) << BRK_POS);
         status |= (1 << U_POS);
         status |= ((self.flags.overflow & 1) << OVER_POS);
         status |= ((self.flags.negative & 1) << NEG_POS);
@@ -1097,7 +1104,7 @@ mod CpuSpc {
 
     #[test]
     fn getAddressInfoAccumulator() {
-        let cpu = getNewCpu();
+        let mut cpu = getNewCpu();
         let (target, bytes, shouldInc, boundaryCrossed) = cpu.getAddressInfo(OpMnemonic::NOP, ACC, 0);
         assert_eq!(target, None);
         assert_eq!(bytes, 1);
@@ -1107,7 +1114,7 @@ mod CpuSpc {
 
     #[test]
     fn getAddressInfoAbsolute() {
-        let cpu = getNewCpu();
+        let mut cpu = getNewCpu();
         let (target, bytes, shouldInc, boundaryCrossed) = cpu.getAddressInfo(OpMnemonic::NOP, ABS, 0);
         assert_eq!(target, Some(0));
         assert_eq!(bytes, 3);
@@ -1141,7 +1148,7 @@ mod CpuSpc {
 
     #[test]
     fn getAddressInfoImmediate() {
-        let cpu = getNewCpu();
+        let mut cpu = getNewCpu();
         let (target, bytes, shouldInc, boundaryCrossed) = cpu.getAddressInfo(OpMnemonic::NOP, IMT, 0);
         assert_eq!(target, Some(0));
         assert_eq!(bytes, 2);
@@ -1151,7 +1158,7 @@ mod CpuSpc {
 
     #[test]
     fn getAddressInfoImplied() {
-        let cpu = getNewCpu();
+        let mut cpu = getNewCpu();
         let (target, bytes, shouldInc, boundaryCrossed) = cpu.getAddressInfo(OpMnemonic::NOP, IMP, 0);
         assert_eq!(target, None);
         assert_eq!(bytes, 1);
@@ -1161,7 +1168,7 @@ mod CpuSpc {
 
     #[test]
     fn getAddressInfoIndirectIndexed() {
-        let cpu = getNewCpu();
+        let mut cpu = getNewCpu();
         cpu.memory.borrow_mut().writeCpuMem(0, 0xFF);
         let (target, bytes, shouldInc, boundaryCrossed) = cpu.getAddressInfo(OpMnemonic::NOP, IND_Y, 0);
         assert_eq!(target, Some(255));
@@ -1184,7 +1191,7 @@ mod CpuSpc {
 
     #[test]
     fn getAddressInfoRelative() {
-        let cpu = getNewCpu();
+        let mut cpu = getNewCpu();
         let (target, bytes, shouldInc, boundaryCrossed) = cpu.getAddressInfo(OpMnemonic::NOP, REL, 0);
         assert_eq!(target, Some(0));
         assert_eq!(bytes, 2);
@@ -1194,7 +1201,7 @@ mod CpuSpc {
 
     #[test]
     fn getAddressInfoZeroPage() {
-        let cpu = getNewCpu();
+        let mut cpu = getNewCpu();
         let (target, bytes, shouldInc, boundaryCrossed) = cpu.getAddressInfo(OpMnemonic::NOP, ZPG, 0);
         assert_eq!(target, Some(0));
         assert_eq!(bytes, 2);

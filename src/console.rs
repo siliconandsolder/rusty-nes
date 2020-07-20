@@ -74,29 +74,20 @@ impl<'a> Clocked for Console<'a> {
 	#[inline]
 	fn cycle(&mut self) {
 		let mut fps: u8 = 0;
+		let mut counter: u128 = 0;
 		let mut now = SystemTime::now();
 		'game: loop {
 
-			// for i in 1..=12 {
-			// 	if i == 1 {
-			// 		self.cpu.borrow_mut().cycle();
-			// 	}
-			// 	if i % 4 == 0 {
-			// 		self.ppu.borrow_mut().cycle();
-			// 	}
-
-			// }
-
-
 			// one frame (approximately)
-			for i in 0..29781 {
-				self.ppu.borrow_mut().cycle();
-				self.ppu.borrow_mut().cycle();
-				self.ppu.borrow_mut().cycle();
+			for i in 0..29780 {
 				self.cpu.borrow_mut().cycle();
+				self.ppu.borrow_mut().cycle();
+				self.ppu.borrow_mut().cycle();
+				self.ppu.borrow_mut().cycle();
+				//counter += 1;
+				//println!("Cycle: {}", counter);
 				//println!("Nanoseconds: {}", now.elapsed().unwrap().as_nanos());
 			}
-
 
 
 			// for event in self.eventPump.borrow_mut().poll_iter() {
