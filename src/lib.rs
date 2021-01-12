@@ -7,6 +7,8 @@ pub mod save_load;
 pub mod opcode_info;
 pub mod cpu;
 pub mod ppu;
+pub mod apu;
+pub mod audio;
 pub mod cartridge;
 pub mod mapper;
 pub mod mapper0;

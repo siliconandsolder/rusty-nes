@@ -16,14 +16,24 @@ use std::cell::RefCell;
 use std::path::Path;
 use sdl2::EventPump;
 use self::sdl2::pixels::{Color, PixelFormatEnum};
+use sdl2::gfx::framerate::FPSManager;
 use crate::ppu_bus::PpuBus;
 use crate::controller::Controller;
+use crate::apu::Apu;
+use self::sdl2::audio::AudioSpecDesired;
 
 const MASTER_CLOCK_NANO: u8 = 47; // should be about 46.56, but the std::thread functions don't allow decimals
+const CPU_HERTZ_PER_CYCLE: f64 = 1.0 / 1789773.0;
+const CPU_HERTZ: f64 = 1789773.0;
+const AUDIO_HERTZ: u16 = 44100;
+const AUDIO_HERTZ_PER_SAMPLE: f64 = 1.0 / 44100.0;
+
+const NANO_PER_FRAME: u128 = ((1.0 / 60.0) * 1000.0 * 1000000.0) as u128;
 
 pub struct Console<'a> {
 	cpu: Rc<RefCell<Cpu<'a>>>,
 	ppu: Rc<RefCell<Ppu<'a>>>,
+	apu: Rc<RefCell<Apu<'a>>>,
 	bus: Rc<RefCell<DataBus<'a>>>,
 	cartridge: Rc<RefCell<Cartridge>>,
 }
@@ -33,18 +43,24 @@ impl<'a> Console<'a> {
 
 		// sdl setup
 		let sdl = sdl2::init().unwrap();
+
 		let vid = sdl.video().unwrap();
 
 		let window = vid
 			.window("RustyNES", 768, 720)
 			.resizable()
+			.position_centered()
+			.opengl()
 			.build()
 			.unwrap();
+
+		let audio = sdl.audio().unwrap();
+
 
 		// will eventually pass this to the controller
 		let eventPump = Rc::new(RefCell::new(sdl.event_pump().unwrap()));
 
-		let mut canvas = window.into_canvas().present_vsync().build().unwrap();
+		let mut canvas = window.into_canvas().build().unwrap();
 		canvas.clear();
 		canvas.set_draw_color(Color::RGB(0,0,0));
 		canvas.present();
@@ -56,6 +72,8 @@ impl<'a> Console<'a> {
 		bus.borrow_mut().attachCartridge(cartridge.clone());
 		let cpu = Rc::new(RefCell::new(Cpu::new(bus.clone())));
 		bus.borrow_mut().attachCpu(cpu.clone());
+		let apu = Rc::new(RefCell::new(Apu::new(audio, bus.clone())));
+		bus.borrow_mut().attachApu(apu.clone());
 		let ppuBus = PpuBus::new(cartridge.clone());
 		let ppu = Rc::new(RefCell::new(Ppu::new(bus.clone(), Rc::new(RefCell::new(canvas)), ppuBus)));
 		bus.borrow_mut().attachPpu(ppu.clone());
@@ -63,6 +81,7 @@ impl<'a> Console<'a> {
 		Console {
 			cpu,
 			ppu,
+			apu,
 			bus,
 			cartridge,
 		}
@@ -73,31 +92,38 @@ impl<'a> Clocked for Console<'a> {
 
 	#[inline]
 	fn cycle(&mut self) {
-		let mut fps: u8 = 0;
-		let mut counter: u128 = 0;
-		let mut now = SystemTime::now();
+		let mut fps = FPSManager::new();
+		fps.set_framerate(60);
+		let mut cycleApu: bool = true;
+		let mut audioTime: f64 = 0.0;
 		'game: loop {
 
 			// one frame (approximately)
-			for i in 0..29780 {
+			for i in 0..29781 {
+				self.ppu.borrow_mut().cycle();
+				self.ppu.borrow_mut().cycle();
+				self.ppu.borrow_mut().cycle();
+
 				self.cpu.borrow_mut().cycle();
-				self.ppu.borrow_mut().cycle();
-				self.ppu.borrow_mut().cycle();
-				self.ppu.borrow_mut().cycle();
+
+				if cycleApu { self.apu.borrow_mut().cycle(); }
+				cycleApu = !cycleApu;
+
+				audioTime += CPU_HERTZ_PER_CYCLE;
+				if audioTime >= AUDIO_HERTZ_PER_SAMPLE {
+					// output audio here
+					audioTime = 0.0;
+					self.apu.borrow_mut().addSampleToBuffer();
+				}
+
 				//counter += 1;
 				//println!("Cycle: {}", counter);
 				//println!("Nanoseconds: {}", now.elapsed().unwrap().as_nanos());
 			}
 
-
-			// for event in self.eventPump.borrow_mut().poll_iter() {
-			// 	match event {
-			// 		sdl2::event::Event::Quit {..} => break 'game,
-			// 		sdl2::event::Event::KeyDown {..} => break 'game,
-			// 		_ => {},
-			// 	}
-			// }
 			self.bus.borrow_mut().getControllerInput();
+			fps.delay();
+
 			// fps += 1;
 			//
 			// if now.elapsed().unwrap().as_secs() >= 1 {

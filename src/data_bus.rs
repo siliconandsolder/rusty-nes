@@ -12,6 +12,7 @@ use crate::mapper::MIRROR::*;
 use crate::palette::*;
 use crate::controller::Controller;
 use crate::clock::Clocked;
+use crate::apu::Apu;
 
 // Split the buses in two. One for CPU-PPU intercommunication, one for PPU data reads and writes.
 
@@ -20,6 +21,7 @@ pub struct DataBus<'a> {
 
     cpu: Option<Rc<RefCell<Cpu<'a>>>>,
     ppu: Option<Rc<RefCell<Ppu<'a>>>>,
+    apu: Option<Rc<RefCell<Apu<'a>>>>,
     cartridge: Option<Rc<RefCell<Cartridge>>>,
     controller1: Option<Rc<RefCell<Controller>>>
 }
@@ -30,6 +32,7 @@ impl<'a> DataBus<'a> {
             cpuMem: vec![0; 0x0800],
             cpu: None,
             ppu: None,
+            apu: None,
             cartridge: None,
             controller1: None
         }
@@ -41,6 +44,10 @@ impl<'a> DataBus<'a> {
 
     pub fn attachCpu(&mut self, cpuRef: Rc<RefCell<Cpu<'a>>>) -> () {
         self.cpu = Some(cpuRef);
+    }
+
+    pub fn attachApu(&mut self, apuRef: Rc<RefCell<Apu<'a>>>) {
+        self.apu = Some(apuRef);
     }
 
     pub fn attachCartridge(&mut self, cartRef: Rc<RefCell<Cartridge>>) -> () {
@@ -63,8 +70,8 @@ impl<'a> DataBus<'a> {
         else if *addr == 0x4016 {
             self.controller1.as_ref().unwrap().borrow_mut().writeState(val);
         }
-        else if *addr == 0x4017 {
-
+        else if (*addr > 0x3FFF && *addr < 0x4014) || *addr == 0x4015 || *addr == 0x4017 {
+            self.apu.as_ref().unwrap().borrow_mut().write(*addr, val);
         }
         else {
             self.cartridge.as_ref().unwrap().borrow_mut().cpuWrite(*addr, val);
@@ -99,6 +106,14 @@ impl<'a> DataBus<'a> {
     #[inline]
     pub fn getControllerInput(&mut self) -> () {
         self.controller1.as_ref().unwrap().borrow_mut().cycle();
+    }
+
+    pub fn setDmcCpuStall(&mut self) -> () {
+        self.cpu.as_ref().unwrap().borrow_mut().setDmcStall();
+    }
+
+    pub fn triggerCpuIRQ(&mut self) -> () {
+        self.cpu.as_ref().unwrap().borrow_mut().setIrq();
     }
 
     pub fn ppuTriggerNMI(&mut self) -> () {

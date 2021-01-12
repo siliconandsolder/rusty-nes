@@ -197,7 +197,7 @@ impl<'a> Clocked for Ppu<'a> {
                     self.updateBackgroundShiftRegisters();
                 }
 
-                if self.fSprEnabled == 1 && self.cycle < 248 {
+                if self.fSprEnabled == 1 && self.cycle < 258 {
                     self.updateSpriteShiftRegisters();
                 }
 
@@ -305,7 +305,9 @@ impl<'a> Clocked for Ppu<'a> {
                             }
                             oamIdx += 1;
                         }
-                        if self.spriteLineCount > 8 { self.fSprOver = 1 };
+                        if self.spriteLineCount >= 8 {
+                            self.fSprOver = 1
+                        };
                     }
                 },
                 280..=304 => {
@@ -395,20 +397,22 @@ impl<'a> Clocked for Ppu<'a> {
         let mut sprPriority: u8 = 0;
 
         if self.fSprEnabled == 1 {
-            self.isZeroBeingRendered = false;
-            for i in 0..self.spriteLineCount {
-                if self.vSpriteLine[(i * 4 + 3) as usize] == 0 {
+            if self.fSprLeft == 1 || self.cycle > 8 {
+                self.isZeroBeingRendered = false;
+                for i in 0..self.spriteLineCount {
+                    if self.vSpriteLine[(i * 4 + 3) as usize] == 0 {
 
-                    sprPixel = ((if self.sprShiftPatHi[i as usize] & 0x80 != 0 {1} else {0}) << 1) | (if self.sprShiftPatLo[i as usize] & 0x80 != 0 {1} else {0});
+                        sprPixel = ((if self.sprShiftPatHi[i as usize] & 0x80 != 0 {1} else {0}) << 1) | (if self.sprShiftPatLo[i as usize] & 0x80 != 0 {1} else {0});
 
-                    // first four palette entries reserved for background colours
-                    sprPallete = (self.vSpriteLine[(i * 4 + 2) as usize] & 0x03) + 0x04;
-                    // priority over background (1 means priority)
-                    sprPriority = if (self.vSpriteLine[(i * 4 + 2) as usize] & 0x20) == 0x20 {0} else {1};
+                        // first four palette entries reserved for background colours
+                        sprPallete = (self.vSpriteLine[(i * 4 + 2) as usize] & 0x03) + 0x04;
+                        // priority over background (1 means priority)
+                        sprPriority = if (self.vSpriteLine[(i * 4 + 2) as usize] & 0x20) == 0x20 {0} else {1};
 
-                    if sprPixel != 0 {
-                        if i == 0 { self.isZeroBeingRendered = true; }
-                        break; // lower indexes are higher priority, meaning no successive sprite can trump this one.
+                        if sprPixel != 0 {
+                            if i == 0 { self.isZeroBeingRendered = true; }
+                            break; // lower indexes are higher priority, meaning no successive sprite can trump this one.
+                        }
                     }
                 }
             }

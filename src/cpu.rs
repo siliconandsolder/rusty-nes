@@ -284,6 +284,10 @@ impl<'a> Cpu<'a> {
         }
     }
 
+    pub fn setDmcStall(&mut self) -> () {
+        self.waitCycles += 4;
+    }
+
     pub fn triggerOamTransfer(&mut self, pageAddr: u16) -> () {
         self.isOamTransfer = true;
         self.oamPage = pageAddr;
