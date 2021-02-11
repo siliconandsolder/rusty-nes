@@ -534,7 +534,7 @@ pub struct Apu<'a> {
 }
 
 impl<'a> Apu<'a> {
-	pub fn new(audioSystem: AudioSubsystem, dataBus: Rc<RefCell<DataBus<'a>>>) -> Self {
+	pub fn new(dataBus: Rc<RefCell<DataBus<'a>>>) -> Self {
 
 		let lengthTable: [u8; 32] = [
 			10, 254, 20, 2, 40, 4, 80, 6, 160, 8, 60, 10, 14, 12, 26, 14,
@@ -563,7 +563,7 @@ impl<'a> Apu<'a> {
 			fiveStep: false,
 			frameInterrupt: false,
 			inhibitInterrupt: false,
-			audio: Audio::new(audioSystem),
+			audio: Audio::new(),
 			lengthTable: Vec::from(lengthTable),
 			pulseTable: pulseTable,
 			tndTable: tndTable,

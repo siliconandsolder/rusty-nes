@@ -72,7 +72,7 @@ impl<'a> Console<'a> {
 		bus.borrow_mut().attachCartridge(cartridge.clone());
 		let cpu = Rc::new(RefCell::new(Cpu::new(bus.clone())));
 		bus.borrow_mut().attachCpu(cpu.clone());
-		let apu = Rc::new(RefCell::new(Apu::new(audio, bus.clone())));
+		let apu = Rc::new(RefCell::new(Apu::new(bus.clone())));
 		bus.borrow_mut().attachApu(apu.clone());
 		let ppuBus = PpuBus::new(cartridge.clone());
 		let ppu = Rc::new(RefCell::new(Ppu::new(bus.clone(), Rc::new(RefCell::new(canvas)), ppuBus)));

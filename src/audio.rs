@@ -8,12 +8,15 @@ use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
 use self::sdl2::audio::{AudioQueue, AudioSpecDesired};
 use std::thread::JoinHandle;
-use flume::{Sender, Receiver};
+use flume::{Sender, Receiver, TryRecvError};
 use self::sdl2::AudioSubsystem;
 use std::cell::RefCell;
 
+use portaudio::*;
+use portaudio::stream::CallbackResult;
+
 const AUDIO_HERTZ: u16 = 44100;
-const BUFFER_SIZE: u16 = 512;
+const BUFFER_SIZE: u16 = 2048;
 
 struct AudioSubsystemSendWrapper(AudioSubsystem);
 
@@ -21,66 +24,46 @@ unsafe impl Sync for AudioSubsystemSendWrapper {}
 unsafe impl Send for AudioSubsystemSendWrapper {}
 
 pub struct Audio {
-	isDone: Arc<AtomicBool>,
-	handle: Option<JoinHandle<()>>,
+	stream: portaudio::Stream<NonBlocking, Output<f32>>,
 	sender: Sender<f32>
 }
 
 impl Audio {
-	pub fn new(audioSystem: AudioSubsystem) -> Self {
+	pub fn new() -> Self {
 
-		let isDoneOrg = Arc::new(AtomicBool::from(false));
-		let isDone = isDoneOrg.clone();
+		let paudio = PortAudio::new().unwrap();
+		let defaultDevice = paudio.default_output_device().unwrap();
+		let outputInfo = paudio.device_info(defaultDevice).unwrap();
+		let latency = outputInfo.default_high_input_latency;
+		let params = portaudio::StreamParameters::<f32>::new(defaultDevice, 1, true, latency);
+		let mut settings = portaudio::OutputStreamSettings::new(params, AUDIO_HERTZ as f64, BUFFER_SIZE as u32);
+		settings.flags = portaudio::stream_flags::CLIP_OFF;
+
 		let (tx, rx) = flume::unbounded();
-		let system = AudioSubsystemSendWrapper(audioSystem);
 
+		let callback
+			= move |portaudio::OutputStreamCallbackArgs { buffer, frames, .. }| {
 
-		let handle = std::thread::spawn(move || {
-			let mut buffer1: Vec<f32> = vec![0.0; BUFFER_SIZE as usize];
-			let mut buffer2: Vec<f32> = vec![0.0; BUFFER_SIZE as usize];
-			let mut bufferIdx: u16 = 0;
-			let mut useBuffer1 = true;
+			for i in 0..frames {
+				let result = rx.try_recv();
 
-
-			let specs = AudioSpecDesired {
-				freq: Some(AUDIO_HERTZ as i32),
-				channels: Some(1),
-				samples: Some(BUFFER_SIZE)
-			};
-
-			let queue = system.0.open_queue::<f32, _>(None, &specs).unwrap();
-			queue.resume();
-
-			while !isDone.load(Ordering::SeqCst) {
-
-				let mut sample: f32 = rx.recv().unwrap();
-				//println!("Got a sample!");
-
-				if useBuffer1 {
-					buffer1[bufferIdx as usize] = sample;
-				}
-				else {
-					buffer2[bufferIdx as usize] = sample;
-				}
-				bufferIdx += 1;
-
-				if bufferIdx == BUFFER_SIZE {
-					bufferIdx = 0;
-					if useBuffer1 {
-						queue.queue(buffer1.as_slice());
-					}
-					else {
-						queue.queue(buffer2.as_slice());
-					}
-					useBuffer1 = !useBuffer1;
+				match result {
+					Ok(sample) => { buffer[i] = sample; }
+					Err(TryRecvError::Empty) => { buffer[i] = 0.0f32; }
+					Err(TryRecvError::Disconnected) => { panic!("Audio channel disconnected! Shutting down...") }
 				}
 			}
-		});
+
+			return portaudio::Continue;
+		};
+
+		let mut stream = paudio.open_non_blocking_stream(settings, callback).unwrap();
+
+		stream.start().unwrap();
 
 		Audio {
-			isDone: isDoneOrg,
-			handle: Some(handle),
-			sender: tx,
+			stream: stream,
+			sender: tx
 		}
 	}
 
@@ -91,7 +74,7 @@ impl Audio {
 
 impl Drop for Audio {
 	fn drop(&mut self) {
-		self.isDone.store(true, Ordering::SeqCst);
-		self.handle.take().unwrap().join().unwrap();
+		self.stream.close().unwrap();
+		self.stream.stop().unwrap();
 	}
 }
