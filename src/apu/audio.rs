@@ -9,7 +9,7 @@ use portaudio::stream::CallbackResult;
 use crate::apu::filter::Filter;
 
 const AUDIO_HERTZ: u16 = 44100;
-const BUFFER_SIZE: u16 = 2048;
+const BUFFER_SIZE: u16 = 1024;
 
 pub struct Audio {
 	stream: portaudio::Stream<NonBlocking, Output<f32>>,
@@ -30,9 +30,8 @@ impl Audio {
 		let latency = outputInfo.default_low_output_latency;
 		let params = portaudio::StreamParameters::<f32>::new(defaultDevice, 1, true, latency);
 		let mut settings = portaudio::OutputStreamSettings::new(params, AUDIO_HERTZ as f64, BUFFER_SIZE as u32);
-		settings.flags = portaudio::stream_flags::CLIP_OFF;
 
-		let (tx, rx) = flume::unbounded();
+		let (tx , rx) = flume::unbounded();
 
 		let callback
 			= move |portaudio::OutputStreamCallbackArgs { buffer, frames, .. }| {
@@ -45,6 +44,7 @@ impl Audio {
 					Err(TryRecvError::Empty) => { buffer[i] = 0.0f32; }
 					Err(TryRecvError::Disconnected) => { panic!("Audio channel disconnected! Shutting down...") }
 				}
+
 			}
 
 			return portaudio::Continue;
