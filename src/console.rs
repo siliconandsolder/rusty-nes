@@ -105,9 +105,7 @@ impl<'a> Clocked for Console<'a> {
 				self.ppu.borrow_mut().cycle();
 
 				self.cpu.borrow_mut().cycle();
-
-				if cycleApu { self.apu.borrow_mut().cycle(); }
-				cycleApu = !cycleApu;
+				self.apu.borrow_mut().cycle();
 
 				audioTime += CPU_HERTZ_PER_CYCLE;
 				if audioTime >= AUDIO_HERTZ_PER_SAMPLE {

@@ -86,6 +86,9 @@ impl<'a> DataBus<'a> {
         else if *addr < 0x4000 {
             return self.ppu.as_ref().unwrap().borrow_mut().readMem(*addr & 0x0007).clone();
         }
+        else if *addr == 0x4015 {
+            return self.apu.as_ref().unwrap().borrow_mut().read(*addr);
+        }
         else if *addr == 0x4016 {
            return self.controller1.as_ref().unwrap().borrow_mut().getState();
         }

@@ -2,30 +2,23 @@
 #![allow(warnings)]
 #![allow(exceeding_bitshifts)]
 
-extern crate sdl2;
-
-use std::sync::{Arc, Mutex};
-use std::sync::atomic::{AtomicBool, Ordering};
-use self::sdl2::audio::{AudioQueue, AudioSpecDesired};
-use std::thread::JoinHandle;
 use flume::{Sender, Receiver, TryRecvError};
-use self::sdl2::AudioSubsystem;
-use std::cell::RefCell;
 
 use portaudio::*;
 use portaudio::stream::CallbackResult;
+use crate::apu::filter::Filter;
 
 const AUDIO_HERTZ: u16 = 44100;
 const BUFFER_SIZE: u16 = 2048;
 
-struct AudioSubsystemSendWrapper(AudioSubsystem);
-
-unsafe impl Sync for AudioSubsystemSendWrapper {}
-unsafe impl Send for AudioSubsystemSendWrapper {}
-
 pub struct Audio {
 	stream: portaudio::Stream<NonBlocking, Output<f32>>,
-	sender: Sender<f32>
+	sender: Sender<f32>,
+
+	// filters
+	highPassFilter1: Filter,
+	highPassFilter2: Filter,
+	lowPassFilter: Filter
 }
 
 impl Audio {
@@ -34,7 +27,7 @@ impl Audio {
 		let paudio = PortAudio::new().unwrap();
 		let defaultDevice = paudio.default_output_device().unwrap();
 		let outputInfo = paudio.device_info(defaultDevice).unwrap();
-		let latency = outputInfo.default_high_input_latency;
+		let latency = outputInfo.default_low_output_latency;
 		let params = portaudio::StreamParameters::<f32>::new(defaultDevice, 1, true, latency);
 		let mut settings = portaudio::OutputStreamSettings::new(params, AUDIO_HERTZ as f64, BUFFER_SIZE as u32);
 		settings.flags = portaudio::stream_flags::CLIP_OFF;
@@ -63,12 +56,23 @@ impl Audio {
 
 		Audio {
 			stream: stream,
-			sender: tx
+			sender: tx,
+			highPassFilter1: Filter::HighPassFilter(AUDIO_HERTZ as f32, 90 as f32),
+			highPassFilter2: Filter::HighPassFilter(AUDIO_HERTZ as f32, 440 as f32),
+			lowPassFilter: Filter::LowPassFilter(AUDIO_HERTZ as f32, 14000 as f32),
 		}
 	}
 
 	pub fn pushSample(&mut self, sample: f32) -> () {
-		self.sender.send(sample);
+		let filteredSample = self.filterSample(sample);
+		self.sender.send(filteredSample);
+	}
+
+	fn filterSample(&mut self, sample: f32) -> f32 {
+		let mut fSample = self.highPassFilter1.Step(sample);
+		fSample = self.highPassFilter2.Step(fSample);
+		fSample = self.lowPassFilter.Step(fSample);
+		return fSample;
 	}
 }
 
