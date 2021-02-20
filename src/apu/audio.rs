@@ -9,7 +9,7 @@ use portaudio::stream::CallbackResult;
 use crate::apu::filter::Filter;
 
 const AUDIO_HERTZ: u16 = 44100;
-const BUFFER_SIZE: u16 = 1024;
+const BUFFER_SIZE: u16 = 512;
 
 pub struct Audio {
 	stream: portaudio::Stream<NonBlocking, Output<f32>>,

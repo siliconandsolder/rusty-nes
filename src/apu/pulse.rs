@@ -146,7 +146,7 @@ impl Pulse {
 			self.lengthCounter == 0 ||
 			self.timerPeriod < 8 ||
 			self.timerPeriod > 0x7FF ||
-			SQUARE_SEQUENCE_TABLE[[self.dutyMode as usize, self.dutyValue as usize]] == 0 {
+			SQUARE_SEQUENCE_TABLE[self.dutyMode as usize][self.dutyValue as usize] == 0 {
 			0
 		} else if self.envEnabled {
 			self.envVolume

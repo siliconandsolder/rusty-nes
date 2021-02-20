@@ -110,7 +110,7 @@ impl<'a> Clocked for Console<'a> {
 				audioTime += CPU_HERTZ_PER_CYCLE;
 				if audioTime >= AUDIO_HERTZ_PER_SAMPLE {
 					// output audio here
-					audioTime = 0.0;
+					audioTime -= AUDIO_HERTZ_PER_SAMPLE;
 					self.apu.borrow_mut().addSampleToBuffer();
 				}
 

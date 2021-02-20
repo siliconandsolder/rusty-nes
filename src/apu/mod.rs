@@ -125,7 +125,11 @@ impl<'a> Apu<'a> {
 				self.pulse1.timer = self.pulse1.timer & 0xFF00 | data as u16;
 			},
 			0x4003 => {
-				self.pulse1.timer = (self.pulse1.timer & 0x00FF) | ((data as u16 & 0b000_00111) << 8) as u16;
+				if !self.pulse1.enabled {
+					return;
+				}
+
+				self.pulse1.timer = (self.pulse1.timer & 0x00FF) | ((data as u16 & 0b000_00111 as u16) << 8) as u16;
 				self.pulse1.timerPeriod = self.pulse1.timer;
 				self.pulse1.lengthCounter = if self.pulse1.enabled { self.lengthTable[(data >> 3) as usize] } else { 0 };
 				self.pulse1.envStart = true;
@@ -134,14 +138,16 @@ impl<'a> Apu<'a> {
 			0x4004 => {
 				self.pulse2.dutyMode = (data & 0b1100_0000) >> 6;
 				self.pulse2.lengthHalt = (data & 0b0010_0000) == 0b0010_0000;
-				self.pulse2.envLoop = self.pulse1.lengthHalt;
+				self.pulse2.envLoop = self.pulse2.lengthHalt;
 				self.pulse2.constVolume = (data & 0b0001_0000) == 0b0001_0000;
-				self.pulse2.envEnabled = !self.pulse1.constVolume;
+				self.pulse2.envEnabled = !self.pulse2.constVolume;
 				self.pulse2.envPeriod = data & 0b0000_1111;
-				self.pulse2.volume = self.pulse1.envPeriod;
+				self.pulse2.volume = self.pulse2.envPeriod;
 				self.pulse2.envStart = true;
 			},
 			0x4005 => {
+
+
 				self.pulse2.sweepEnabled = (data & 0b1000_0000) == 0b1000_0000;
 				self.pulse2.sweepPeriod = (data & 0b0111_0000) >> 4;
 				self.pulse2.negate = (data & 0b0000_1000) == 0b0000_1000;
@@ -149,32 +155,40 @@ impl<'a> Apu<'a> {
 				self.pulse2.sweepReload = true;
 			},
 			0x4006 => {
-				self.pulse2.timerPeriod = self.pulse1.timerPeriod & 0xFF00 | data as u16;
+				self.pulse2.timerPeriod = self.pulse2.timerPeriod & 0xFF00 | data as u16;
 			},
 			0x4007 => {
-				self.pulse2.timerPeriod = (self.pulse1.timerPeriod & 0x00FF) | ((data as u16 & 0b00000111) << 8) as u16;
-				self.pulse2.timer = self.pulse1.timerPeriod;
+
+				if !self.pulse2.enabled {
+					return;
+				}
+				self.pulse2.timerPeriod = (self.pulse2.timerPeriod & 0x00FF) | ((data as u16 & 0b0000_0111 as u16) << 8) as u16;
+				self.pulse2.timer = self.pulse2.timerPeriod;
 				self.pulse2.lengthCounter = if self.pulse2.enabled { self.lengthTable[(data >> 3) as usize]} else {0};
 				self.pulse2.envStart = true;
 				self.pulse2.dutyValue = 0;
 			},
 			0x4008 => {
-				self.triangle.linearCounterControl = (data & 128) == 128;
-				self.triangle.lengthCounterEnabled = !self.triangle.linearCounterControl;
+				self.triangle.linearCounterEnabled = (data & 128) == 128;
+				self.triangle.lengthCounterEnabled = !self.triangle.linearCounterEnabled;
 				self.triangle.linearCounterPeriod = data & 0b01111111;
 			},
 			0x400A => {
 				self.triangle.timerPeriod = (self.triangle.timerPeriod & 0xFF00) | data as u16;
 			},
 			0x400B => {
-				self.triangle.timerPeriod = (self.triangle.timerPeriod & 0x00FF) as u16 | ((data & 0b00000111) << 4) as u16;
+				if !self.triangle.enabled {
+					return;
+				}
+
+				self.triangle.timerPeriod = (self.triangle.timerPeriod & 0x00FF) as u16 | ((data as u16 & 0b0000_0111 as u16) << 8) as u16;
 				self.triangle.timer = self.triangle.timerPeriod;
 				self.triangle.lengthCounterValue = if self.triangle.enabled { self.lengthTable[(data >> 3) as usize]} else {0};
 				self.triangle.linearCounterReload = true;
 			},
 			0x400C => {
 				self.noise.lengthHalt = (data & 0b0010_0000) == 0b0010_0000;
-				self.noise.envLoop = !self.pulse1.lengthHalt;
+				self.noise.envLoop = !self.noise.lengthHalt;
 				self.noise.envEnabled = !((data & 0b0001_0000) == 0b0001_0000);
 				self.noise.envPeriod = data & 0b0000_1111;
 				self.noise.constVolume = self.noise.envPeriod;
@@ -184,6 +198,10 @@ impl<'a> Apu<'a> {
 				self.noise.timerPeriod = NOISE_TIMER_TABLE[(data & 15) as usize]
 			},
 			0x400F => {
+				if !self.noise.enabled {
+					return;
+				}
+
 				self.noise.lengthCounter = if self.noise.enabled { self.lengthTable[(data >> 3) as usize] } else { 0 };
 				self.noise.envStart = true;
 			},
@@ -351,11 +369,6 @@ impl<'a> Clocked for Apu<'a> {
 					self.frame = 0;
 				}
 			},
-			// STEP_FOUR_CYCLE_PLUS_ONE => {
-			// 	if !self.fiveStep {
-			// 		self.dataBus.borrow_mut().triggerCpuIRQ();
-			// 	}
-			// }
 			STEP_FIVE_CYCLE => {
 				if self.fiveStep {
 					self.quarterStep();
@@ -367,7 +380,7 @@ impl<'a> Clocked for Apu<'a> {
 		}
 
 
-		if (self.frame % 2) == 1 {
+		if (self.frame % 2) == 0 {
 			self.pulse1.clockTimer();
 			self.pulse2.clockTimer();
 			self.noise.clockTimer();

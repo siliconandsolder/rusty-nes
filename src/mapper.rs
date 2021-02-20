@@ -3,10 +3,10 @@
 
 #[derive(Debug, Copy, Clone)]
 pub enum MIRROR {
-    HORIZONTAL,
-    VERTICAL,
     ONESCREEN_LO,
-    ONESCREEN_HI
+    ONESCREEN_HI,
+    VERTICAL,
+    HORIZONTAL,
 }
 
 pub trait Mapper {
