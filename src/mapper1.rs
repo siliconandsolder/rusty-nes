@@ -3,12 +3,15 @@
 #![allow(exceeding_bitshifts)]
 
 use crate::mapper::{Mapper, MIRROR};
+use sdl2::gfx::imagefilter::add;
 
+#[derive(Eq, PartialEq)]
 enum ChrMode {
 	FourKB,
 	EightKB
 }
 
+#[derive(Eq, PartialEq)]
 enum PrgMode {
 	Switch32,
 	FixFirstBank,
@@ -21,7 +24,8 @@ pub struct Mapper1 {
 	ctrlReg: u8,
 	chrBank0: u8,
 	chrBank1: u8,
-	prgBank: u8,
+	prgBank0: u8,
+	prgBank1: u8,
 	numPrgBanks: u8,
 	numChrBanks: u8,
 	vPrgRam: Vec<u8>,
@@ -39,7 +43,8 @@ impl Mapper1 {
 			ctrlReg: 0b11111,
 			chrBank0: 0,
 			chrBank1: 0,
-			prgBank: 0,
+			prgBank0: 0,
+			prgBank1: 0,
 			numPrgBanks,
 			numChrBanks,
 			vPrgRam: vec![0; 0x8000],
@@ -99,33 +104,24 @@ impl Mapper for Mapper1 {
 			return Some(self.vPrgRam[(*addr & 0x1FFF) as usize] as u32);
 		}
 		else if *addr >= 0x8000 {
-			let prgBankMode = (self.ctrlReg & 0b01100) >> 2;
-			match prgBankMode {
-				0 | 1 => {
-					return Some((self.prgBank as u32 & 0b1110) * 0x8000 + (*addr as u32 & 0x7FFF));
+			return match self.prgMode {
+				PrgMode::Switch32 => {
+					Some((self.prgBank0 as u32) * 0x8000 + (*addr as u32 & 0x7FFF))
 				}
-				2 => {
+				PrgMode::FixFirstBank => {
 					if *addr < 0xC000 {
 						// first bank is fixed to the start
-						return Some(*addr as u32 & 0x3FFF);
-					}
-					else {
-						return Some(self.prgBank as u32 * 0x4000 + (*addr as u32 & 0x3FFF));
+						Some(self.prgBank0 as u32 * 0x4000 + (*addr as u32 & 0x3FFF))
 					}
 				}
-				3 => {
+				PrgMode::FixLastBank => {
 					if *addr >= 0xC000 {
 						// first bank is fixed to the start
-						return Some((self.numPrgBanks as u32 - 1) * 0x4000 + (*addr as u32 & 0x3FFF));
-					}
-					else {
-						return Some(self.prgBank as u32 * 0x4000 + (*addr as u32 & 0x3FFF));
+						Some(self.prgBank1 as u32 * 0x4000 + (*addr as u32 & 0x3FFF))
 					}
 				}
-				_ => { panic!("Should not reach here!"); }
 			}
 		}
-
 
 		return None;
 	}
@@ -154,13 +150,35 @@ impl Mapper for Mapper1 {
 							self.setCtrlRegister();
 						}
 						1 => {
-							self.chrBank0 = self.shiftReg;
+							match self.chrMode {
+								ChrMode::FourKB => {
+									self.chrBank0 = self.ctrlReg & 0b1_1111;
+								}
+								ChrMode::EightKB => {
+									self.chrBank0 = self.ctrlReg & 0b1_1110;
+								}
+							}
 						}
 						2 => {
-							self.chrBank1 = self.shiftReg;
+							if self.chrMode == ChrMode::FourKB {
+								self.chrBank1 = self.shiftReg;
+							}
 						}
 						3 => {
-							self.prgBank = self.shiftReg & 0b1111;
+							match self.prgMode {
+								PrgMode::Switch32 => {
+									self.prgBank0 = (self.ctrlReg & 0b1110) >> 1;
+								}
+								PrgMode::FixFirstBank => {
+									self.prgBank0 = 0;
+									self.prgBank1 = self.ctrlReg & 0b1111;
+								}
+								PrgMode::FixLastBank => {
+									self.prgBank0 = self.ctrlReg & 0b1111;
+									self.prgBank1 = self.numPrgBanks - 1;
+								}
+							}
+							self.prgBank0 = self.shiftReg & 0b11110;
 						}
 						_ => {}
 					}
@@ -174,18 +192,22 @@ impl Mapper for Mapper1 {
 
 	fn ppuMapRead(&mut self, ref addr: u16) -> Option<u32> {
 		if *addr < 0x2000 {
-			let chrBankMode = (self.ctrlReg & 0b10000) >> 4;
-			match chrBankMode {
-				1 => { // 4k mode
-					if *addr < 0x1000 {
-						return Some(self.chrBank0 as u32 * 0x1000 + (*addr as u32 & 0x0FFF));
+			if self.numChrBanks == 0 {
+				return Some(*addr as u32);
+			}
+			else {
+				return match self.chrMode {
+					ChrMode::FourKB => { // 4k mode
+						if *addr < 0x1000 {
+							Some(self.chrBank0 as u32 * 0x1000 + (*addr as u32 & 0x0FFF))
+						}
+						else {
+							Some(self.chrBank1 as u32 * 0x1000 + (*addr as u32 & 0x0FFF))
+						}
+					},
+					ChrMode::EightKB => { // 8k mode
+						Some((self.chrBank0) as u32 * 0x2000 + (*addr as u32 & 0x1FFF))
 					}
-					else {
-						return Some(self.chrBank1 as u32 * 0x1000 + (*addr as u32 & 0x0FFF));
-					}
-				},
-				_ => { // 8k mode
-					return Some((self.chrBank0 & 0b11110) as u32 * 0x2000 + (*addr as u32 & 0x1FFF));
 				}
 			}
 		}
@@ -203,20 +225,6 @@ impl Mapper for Mapper1 {
 	}
 
 	fn getMirrorType(&self) -> MIRROR {
-		match self.ctrlReg & 3 {
-			0 => {
-				return MIRROR::ONESCREEN_LO;
-			},
-			1 => {
-				return MIRROR::ONESCREEN_HI;
-			},
-			2 => {
-				return MIRROR::VERTICAL;
-			},
-			3 => {
-				return MIRROR::HORIZONTAL;
-			},
-			_ => { panic!("Should never reach this."); }
-		}
+		return self.mirrorMode;
 	}
 }
