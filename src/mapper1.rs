@@ -4,17 +4,6 @@
 
 use crate::mapper::{Mapper, MIRROR};
 
-enum ChrMode {
-	FourKB,
-	EightKB
-}
-
-enum PrgMode {
-	Switch32,
-	FixFirstBank,
-	FixLastBank,
-}
-
 pub struct Mapper1 {
 	shiftReg: u8,
 	shiftCount: u8,
@@ -24,11 +13,7 @@ pub struct Mapper1 {
 	prgBank: u8,
 	numPrgBanks: u8,
 	numChrBanks: u8,
-	vPrgRam: Vec<u8>,
-
-	mirrorMode: MIRROR,
-	chrMode: ChrMode,
-	prgMode: PrgMode
+	vPrgRam: Vec<u8>
 }
 
 impl Mapper1 {
@@ -42,10 +27,7 @@ impl Mapper1 {
 			prgBank: 0,
 			numPrgBanks,
 			numChrBanks,
-			vPrgRam: vec![0; 0x8000],
-			mirrorMode: MIRROR::ONESCREEN_LO,
-			chrMode: ChrMode::FourKB,
-			prgMode: PrgMode::Switch32
+			vPrgRam: vec![0; 0x8000]
 		}
 	}
 
@@ -53,44 +35,6 @@ impl Mapper1 {
 		self.shiftReg = 0;
 		self.shiftCount = 0;
 	}
-
-	fn setCtrlRegister(&mut self) -> () {
-
-		self.prgMode = match (self.shiftReg >> 2) & 3 {
-			0 | 1 => { PrgMode::Switch32 }
-			2 => { PrgMode::FixFirstBank }
-			3 => { PrgMode::FixLastBank }
-			_ => { PrgMode::Switch32 }
-		};
-
-		self.chrMode = match (self.shiftReg >> 4) & 1 {
-			1 => { ChrMode::EightKB }
-			_ => { ChrMode::FourKB }
-		};
-
-		self.mirrorMode = match self.shiftReg & 3 {
-			0 => { MIRROR::ONESCREEN_LO }
-			1 => { MIRROR::ONESCREEN_HI }
-			2 => { MIRROR::VERTICAL }
-			3 => { MIRROR::HORIZONTAL }
-			_=> { MIRROR::ONESCREEN_LO }
-		};
-
-
-		self.ctrlReg = self.shiftReg;
-	}
-
-	// fn setOffsets(&mut self) -> () {
-	// 	match self.chrMode {
-	// 		ChrMode::FourKB => {
-	// 			self
-	// 		}
-	//
-	// 		ChrMode::EightKB => {
-	//
-	// 		}
-	// 	}
-	// }
 }
 
 impl Mapper for Mapper1 {
@@ -151,7 +95,7 @@ impl Mapper for Mapper1 {
 					let register = (*addr & 0x6000) >> 13; // get bits 13 and 14
 					match register {
 						0 => {
-							self.setCtrlRegister();
+							self.ctrlReg = self.shiftReg;
 						}
 						1 => {
 							self.chrBank0 = self.shiftReg;
@@ -164,7 +108,6 @@ impl Mapper for Mapper1 {
 						}
 						_ => {}
 					}
-					// update
 					self.resetShiftRegister();
 				}
 			}
