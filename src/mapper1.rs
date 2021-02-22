@@ -34,7 +34,7 @@ impl Mapper1 {
 	}
 
 	fn resetShiftRegister(&mut self) -> () {
-		self.shiftReg = 0;
+		self.shiftReg = 0x10;
 		self.shiftCount = 0;
 	}
 }
