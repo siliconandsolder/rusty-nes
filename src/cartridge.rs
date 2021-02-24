@@ -28,7 +28,7 @@ struct Header {
     prgRam: u8,
     tvSys1: u8,
     tvSys2: u8,
-    unused: [u8; 5]
+    unused: [u8; 5],
 }
 
 pub struct Cartridge {
@@ -75,7 +75,7 @@ impl Cartridge {
         let mut chrMem: Vec<u8> = vec![0];
 
         match fileType {
-            0 => {},
+            0 => {}
             1 => {
                 numPrgBanks = header.prgSize;
                 numChrBanks = header.chrSize;
@@ -85,10 +85,10 @@ impl Cartridge {
 
                 chrMem.resize(numChrBanks as usize * 8192, 0);
                 for i in 0..chrMem.len() { chrMem[i] = *fIter.next().unwrap(); }
-            },
-            2 => {},
-            3 => {},
-            4 => {},
+            }
+            2 => {}
+            3 => {}
+            4 => {}
             _ => panic!("Unknown file type: {}", fileType)
         }
 
@@ -114,12 +114,12 @@ impl Cartridge {
             pMapper: mapper.unwrap(),
             mirror,
             hasPrgRam,
-        }
+        };
     }
 
     #[inline]
     pub fn cpuRead(&mut self, ref addr: u16) -> u8 {
-		let mut mapAddr = self.pMapper.cpuMapRead(*addr);
+        let mut mapAddr = self.pMapper.cpuMapRead(*addr);
 
         // check if PRG RAM
         if self.hasPrgRam && *addr >= PRG_RAM_START && *addr <= PRG_RAM_END {
@@ -138,12 +138,12 @@ impl Cartridge {
 
     #[inline]
     pub fn cpuWrite(&mut self, ref addr: u16, val: u8) -> () {
-		// no need to check if battery-backed PRG RAM because we're not returning anything
+        // no need to check if battery-backed PRG RAM because we're not returning anything
         let mapAddr = self.pMapper.cpuMapWrite(*addr, val);
         if mapAddr.is_some() {
             match self.vPrgMem.get_mut(mapAddr.unwrap() as usize) {
                 Some(x) => { *x = val; }
-                _=> {}
+                _ => {}
             }
         }
     }
@@ -152,7 +152,7 @@ impl Cartridge {
     pub fn ppuRead(&mut self, ref addr: u16) -> u8 {
         let mut mapAddr = self.pMapper.ppuMapRead(*addr);
         if mapAddr.is_none() {
-           return 0;
+            return 0;
         }
         return *self.vChrMem.get(mapAddr.unwrap() as usize)
             .unwrap_or_else(|| -> &u8 { &0 });
@@ -164,7 +164,7 @@ impl Cartridge {
         if mapAddr.is_some() {
             match self.vChrMem.get_mut(mapAddr.unwrap() as usize) {
                 Some(x) => { *x = val; }
-                _=> {}
+                _ => {}
             }
         }
     }

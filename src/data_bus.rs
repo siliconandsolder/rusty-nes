@@ -23,7 +23,7 @@ pub struct DataBus<'a> {
     ppu: Option<Rc<RefCell<Ppu<'a>>>>,
     apu: Option<Rc<RefCell<Apu<'a>>>>,
     cartridge: Option<Rc<RefCell<Cartridge>>>,
-    controller1: Option<Rc<RefCell<Controller>>>
+    controller1: Option<Rc<RefCell<Controller>>>,
 }
 
 impl<'a> DataBus<'a> {
@@ -34,7 +34,7 @@ impl<'a> DataBus<'a> {
             ppu: None,
             apu: None,
             cartridge: None,
-            controller1: None
+            controller1: None,
         }
     }
 
@@ -62,18 +62,14 @@ impl<'a> DataBus<'a> {
     pub fn writeCpuMem(&mut self, ref addr: u16, val: u8) -> () {
         if *addr < 0x2000 {
             self.cpuMem[(*addr & 0x07FF) as usize] = val;
-        }
-        else if *addr < 0x4000 {
+        } else if *addr < 0x4000 {
             //info!("Calling register: {} with value {}", *addr & 0007, val);
             self.ppu.as_ref().unwrap().borrow_mut().writeMem(*addr & 0x0007, val);
-        }
-        else if *addr == 0x4016 {
+        } else if *addr == 0x4016 {
             self.controller1.as_ref().unwrap().borrow_mut().writeState(val);
-        }
-        else if (*addr > 0x3FFF && *addr < 0x4014) || *addr == 0x4015 || *addr == 0x4017 {
+        } else if (*addr > 0x3FFF && *addr < 0x4014) || *addr == 0x4015 || *addr == 0x4017 {
             self.apu.as_ref().unwrap().borrow_mut().write(*addr, val);
-        }
-        else {
+        } else {
             self.cartridge.as_ref().unwrap().borrow_mut().cpuWrite(*addr, val);
         }
     }
@@ -82,21 +78,16 @@ impl<'a> DataBus<'a> {
     pub fn readCpuMem(&self, ref addr: u16) -> u8 {
         if *addr < 0x2000 {
             return self.cpuMem[(*addr & 0x07FF) as usize].clone();
-        }
-        else if *addr < 0x4000 {
+        } else if *addr < 0x4000 {
             return self.ppu.as_ref().unwrap().borrow_mut().readMem(*addr & 0x0007).clone();
-        }
-        else if *addr == 0x4015 {
+        } else if *addr == 0x4015 {
             return self.apu.as_ref().unwrap().borrow_mut().read(*addr);
-        }
-        else if *addr == 0x4016 {
-           return self.controller1.as_ref().unwrap().borrow_mut().getState();
-        }
-        else if *addr == 0x4017 {
+        } else if *addr == 0x4016 {
+            return self.controller1.as_ref().unwrap().borrow_mut().getState();
+        } else if *addr == 0x4017 {
             // controller two stuff goes here
             return 0;
-        }
-        else {
+        } else {
             return self.cartridge.as_ref().unwrap().borrow_mut().cpuRead(*addr);
         }
     }
@@ -143,7 +134,7 @@ impl<'a> DataBus<'a> {
             0xFFFE => 4,
             0xFFFF => 5,
             _ => panic!("Interrupt memory out of bounds: {}", *addr)
-        }
+        };
     }
 
     fn mirrorCPU(&mut self, addr: &u16) -> () {

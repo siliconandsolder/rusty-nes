@@ -1,4 +1,3 @@
-
 use lazy_static::lazy_static;
 use ndarray::Array2;
 use ndarray::Array1;
@@ -19,10 +18,10 @@ const BUFFER_SIZE: u16 = 2048;
 
 
 pub const SQUARE_SEQUENCE_TABLE: [[u8; 8]; 4] = [
-     [0, 1, 0, 0, 0, 0, 0, 0],
-     [0, 1, 1, 0, 0, 0, 0, 0],
-     [0, 1, 1, 1, 1, 0, 0, 0],
-     [1, 0, 0, 1, 1, 1, 1, 1],
+    [0, 1, 0, 0, 0, 0, 0, 0],
+    [0, 1, 1, 0, 0, 0, 0, 0],
+    [0, 1, 1, 1, 1, 0, 0, 0],
+    [1, 0, 0, 1, 1, 1, 1, 1],
 ];
 
 lazy_static! {

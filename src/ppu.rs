@@ -34,14 +34,14 @@ const PIXEL_HEIGHT: u32 = 240;
 
 struct TextureManager<'a> {
     textureCreator: TextureCreator<WindowContext>,
-    texture: Option<Texture<'a>>
+    texture: Option<Texture<'a>>,
 }
 
 impl<'a> TextureManager<'a> {
     pub fn new(textureCreator: TextureCreator<WindowContext>) -> Self {
         let mut tm = TextureManager {
             textureCreator,
-            texture: None
+            texture: None,
         };
         tm.createTexture();
         return tm;
@@ -75,17 +75,22 @@ pub struct Ppu<'a> {
     frameCycles: u16,
     isOddFrame: bool,
 
-    v: u16,     // vram address
-    t: u16,    /* temp vram address
+    v: u16,
+    // vram address
+    t: u16,
+    /* temp vram address
              0x0yyy NN YYYYY XXXXX
                 ||| || ||||| +++++-- coarse X scroll
                 ||| || +++++-------- coarse Y scroll
                 ||| ++-------------- nametable select
                 +++----------------- fine Y scroll
                 */
-    x: u8,      // fine x scroll
-    w: u8,      // write toggle
-    f: u8,      // frame is even or odd
+    x: u8,
+    // fine x scroll
+    w: u8,
+    // write toggle
+    f: u8,
+    // frame is even or odd
     prevReg: u8,
 
     oamAddr: u8,
@@ -120,7 +125,6 @@ pub struct Ppu<'a> {
     isZeroHitPossible: bool,
     isZeroBeingRendered: bool,
 
-
     // flags
     // PPUCTRL
     fNameTable: u8,
@@ -152,16 +156,14 @@ pub struct Ppu<'a> {
     vPixels: Vec<Rect>,
     vPixelColours: Vec<u8>,
     vPixelPalette: Vec<u8>,
-    
-    // debug
-    log: File
 
+    // debug
+    log: File,
 }
 
 impl<'a> Clocked for Ppu<'a> {
     #[inline]
     fn cycle(&mut self) {
-
         let renderEnabled = self.fSprEnabled == 1 || self.fBckEnabled == 1;
         let renderLine = self.scanLine < SCANLINE_VBLANK_MIN - 1;
         let preLine = self.scanLine == SCANLINE_MAX;
@@ -192,7 +194,6 @@ impl<'a> Clocked for Ppu<'a> {
 
         if renderEnabled {
             if (renderLine || preLine) && (renderCycle || fetchCycle) {
-
                 if self.fBckEnabled == 1 {
                     self.updateBackgroundShiftRegisters();
                 }
@@ -211,9 +212,8 @@ impl<'a> Clocked for Ppu<'a> {
                             0x2000 | (vAddr & 0x0FFF)
                         );
                         //info!("BgTileId: {}\n", self.bgTileId);
-                    },
+                    }
                     2 => {
-
                         let bgTileAddr = 0x23C0 | (vAddr & 0x0C00) | ((vAddr >> 4) & 0x38) | ((vAddr >> 2) & 0x07);
                         self.bgTileAttr = self.ppuBus.readPpuMem(
                             bgTileAddr
@@ -233,29 +233,29 @@ impl<'a> Clocked for Ppu<'a> {
                         // let coarseX =   (vAddr & 0b0000000000011111);
                         // if (coarseY & 2) == 2 { self.bgTileAttr >>= 4; }
                         // if (coarseX & 2) == 2 { self.bgTileAttr >>= 2; }
-						// self.bgTileAttr &= 3;
+                        // self.bgTileAttr &= 3;
                         let shift = ((vAddr & 0x40) >> 4) | (vAddr & 2);
                         self.bgTileAttr = (self.bgTileAttr >> shift as u8) & 3;
-                    },
+                    }
                     4 => {
                         self.bgTileLsb = self.ppuBus.readPpuMem(
                             ((self.fBckTile as u16) << 12) |
                                 ((self.bgTileId as u16) << 4) |
                                 ((vAddr >> 12) & 0b0111 as u16)
                         );
-                    },
+                    }
                     6 => {
                         self.bgTileMsb = self.ppuBus.readPpuMem(
                             (((self.fBckTile as u16) << 12) |
                                 ((self.bgTileId as u16) << 4) |
                                 ((vAddr >> 12) & 0b0111 as u16)) + 8 as u16
                         );
-                    },
+                    }
                     7 => {
                         //info!("vAddr before incrementX: {}\n", self.v);
                         self.incrementX();
                         //info!("vAddr after incrementX: {}\n", self.v);
-                    },
+                    }
                     _ => {}
                 }
             }
@@ -267,7 +267,7 @@ impl<'a> Clocked for Ppu<'a> {
                         self.incrementY();
                     }
                     //info!("vAddr after incrementY: {}\n", self.v);
-                },
+                }
                 257 => {
                     self.loadBackgroundShiftRegisters();
                     // copy nametable x and coarse x
@@ -278,7 +278,6 @@ impl<'a> Clocked for Ppu<'a> {
                     //info!("vAddr after X-transfer: {}\n", self.v);
 
                     if !preLine {
-
                         for i in &mut self.vSpriteLine { *i = 0; }
                         self.spriteLineCount = 0;
                         let mut oamIdx: u8 = 0;
@@ -294,7 +293,6 @@ impl<'a> Clocked for Ppu<'a> {
                                 // copy oam entry into scanline vector
                                 // increment sprite count
                                 if self.spriteLineCount < 8 {
-
                                     if oamIdx == 0 { self.isZeroHitPossible = true; }
 
                                     for i in 0..=3 {
@@ -309,7 +307,7 @@ impl<'a> Clocked for Ppu<'a> {
                             self.fSprOver = 1
                         };
                     }
-                },
+                }
                 280..=304 => {
                     if preLine {
                         //info!("vAddr before Y-transfer: {}\n", self.v);
@@ -317,10 +315,10 @@ impl<'a> Clocked for Ppu<'a> {
                         self.v = (self.v & 0x841F) | (self.t & 0x7BE0);
                         //info!("vAddr after Y-transfer: {}\n", self.v);
                     }
-                },
-                338 => { self.bgTileId = self.ppuBus.readPpuMem( 0x2000 | (*&self.v & 0x0FFF) ); },
+                }
+                338 => { self.bgTileId = self.ppuBus.readPpuMem(0x2000 | (*&self.v & 0x0FFF)); }
                 340 => {
-                    self.bgTileId = self.ppuBus.readPpuMem( 0x2000 | (*&self.v & 0x0FFF) );
+                    self.bgTileId = self.ppuBus.readPpuMem(0x2000 | (*&self.v & 0x0FFF));
 
                     // behold: sprite logic!
                     for i in 0..self.spriteLineCount {
@@ -376,9 +374,8 @@ impl<'a> Clocked for Ppu<'a> {
                         self.sprShiftPatHi[i as usize] = sprPatBitsHi;
                         self.sprShiftPatLo[i as usize] = sprPatBitsLo;
                     }
-
-                },
-                _=> {}
+                }
+                _ => {}
             }
         }
 
@@ -388,8 +385,8 @@ impl<'a> Clocked for Ppu<'a> {
         if self.fBckEnabled == 1 {
             let mux: u16 = 0x8000 >> self.x as u16;
 
-            bgPixel = ((if self.bgShiftPatHi & mux > 0 {1} else {0} as u8) << 1) | if self.bgShiftPatLo & mux > 0 {1} else {0} as u8;
-            bgPallete = ((if self.bgShiftAttrHi & mux > 0 {1} else {0} as u8) << 1) | if self.bgShiftAttrLo & mux > 0 {1} else {0} as u8;
+            bgPixel = ((if self.bgShiftPatHi & mux > 0 { 1 } else { 0 } as u8) << 1) | if self.bgShiftPatLo & mux > 0 { 1 } else { 0 } as u8;
+            bgPallete = ((if self.bgShiftAttrHi & mux > 0 { 1 } else { 0 } as u8) << 1) | if self.bgShiftAttrLo & mux > 0 { 1 } else { 0 } as u8;
         }
 
         let mut sprPixel: u8 = 0;
@@ -401,13 +398,12 @@ impl<'a> Clocked for Ppu<'a> {
                 self.isZeroBeingRendered = false;
                 for i in 0..self.spriteLineCount {
                     if self.vSpriteLine[(i * 4 + 3) as usize] == 0 {
-
-                        sprPixel = ((if self.sprShiftPatHi[i as usize] & 0x80 != 0 {1} else {0}) << 1) | (if self.sprShiftPatLo[i as usize] & 0x80 != 0 {1} else {0});
+                        sprPixel = ((if self.sprShiftPatHi[i as usize] & 0x80 != 0 { 1 } else { 0 }) << 1) | (if self.sprShiftPatLo[i as usize] & 0x80 != 0 { 1 } else { 0 });
 
                         // first four palette entries reserved for background colours
                         sprPallete = (self.vSpriteLine[(i * 4 + 2) as usize] & 0x03) + 0x04;
                         // priority over background (1 means priority)
-                        sprPriority = if (self.vSpriteLine[(i * 4 + 2) as usize] & 0x20) == 0x20 {0} else {1};
+                        sprPriority = if (self.vSpriteLine[(i * 4 + 2) as usize] & 0x20) == 0x20 { 0 } else { 1 };
 
                         if sprPixel != 0 {
                             if i == 0 { self.isZeroBeingRendered = true; }
@@ -425,13 +421,13 @@ impl<'a> Clocked for Ppu<'a> {
         match bgPixel {
             0 => {
                 match sprPixel {
-                    0 => {},
+                    0 => {}
                     _ => {
                         pixel = sprPixel;
                         palette = sprPallete;
                     }
                 }
-            },
+            }
             _ => {
                 match sprPixel {
                     0 => {
@@ -443,7 +439,7 @@ impl<'a> Clocked for Ppu<'a> {
                             0 => {
                                 pixel = bgPixel;
                                 palette = bgPallete;
-                            },
+                            }
                             _ => {
                                 pixel = sprPixel;
                                 palette = sprPallete;
@@ -458,11 +454,10 @@ impl<'a> Clocked for Ppu<'a> {
                             // we're not rendering the left-most 8 pixels, so
                             // only generate a hit after the first 8 pixels
                             if (self.fBckLeft | self.fSprLeft) == 0 {
-                               if self.cycle > 8 && self.cycle < 258 {
-                                   self.fSprZero = 1;
-                               }
-                            }
-                            else {
+                                if self.cycle > 8 && self.cycle < 258 {
+                                    self.fSprZero = 1;
+                                }
+                            } else {
                                 if self.cycle > 0 && self.cycle < 258 {
                                     self.fSprZero = 1;
                                 }
@@ -500,7 +495,6 @@ impl<'a> Clocked for Ppu<'a> {
 
 impl<'a> Ppu<'a> {
     pub fn new(mem: Rc<RefCell<DataBus<'a>>>, canvas: Rc<RefCell<WindowCanvas>>, ppuBus: PpuBus) -> Self {
-
         let textureManager = TextureManager::new(canvas.borrow_mut().texture_creator());
 
         Ppu {
@@ -555,32 +549,32 @@ impl<'a> Ppu<'a> {
             vPixels: vec![Rect::new(0, 0, 1, 1); 61440],
             vPixelColours: vec![0; (PIXEL_WIDTH * PIXEL_HEIGHT * 3) as usize],
             vPixelPalette: vec![0; (PIXEL_WIDTH * PIXEL_HEIGHT) as usize],
-            log: File::create("log.txt").unwrap()
+            log: File::create("log.txt").unwrap(),
         }
     }
 
     pub fn readMem(&mut self, ref addr: u16) -> u8 {
         match *addr {
-            0x0002 => { return self.ppuStatus(); },     // PPU STATUS
-            0x0004 => { return self.oamDataRead(); },   // OAM DATA
-            0x0007 => { return self.ppuDataRead(); },   // PPU DATA
+            0x0002 => { return self.ppuStatus(); }     // PPU STATUS
+            0x0004 => { return self.oamDataRead(); }   // OAM DATA
+            0x0007 => { return self.ppuDataRead(); }   // PPU DATA
             //_ => panic!("Unknown PPU register: {}", *addr)
-            _=> {}
+            _ => {}
         }
         return 0;
     }
 
     pub fn writeMem(&mut self, ref addr: u16, val: u8) -> () {
         match *addr {
-            0x0000 => { self.ppuCtrl(val) },        // PPU CONTROL
-            0x0001 => { self.ppuMask(val) },        // PPU MASK
-            0x0003 => { self.oamAddress(val) },     // OAM ADDRESS
-            0x0004 => { self.oamDataWrite(val) },   // OAM DATA
-            0x0005 => { self.ppuScroll(val) },      // PPU SCROLL
-            0x0006 => { self.ppuAddress(val) },     // PPU ADDRESS
-            0x0007 => { self.ppuDataWrite(val) },   // PPU DATA
+            0x0000 => { self.ppuCtrl(val) }        // PPU CONTROL
+            0x0001 => { self.ppuMask(val) }        // PPU MASK
+            0x0003 => { self.oamAddress(val) }     // OAM ADDRESS
+            0x0004 => { self.oamDataWrite(val) }   // OAM DATA
+            0x0005 => { self.ppuScroll(val) }      // PPU SCROLL
+            0x0006 => { self.ppuAddress(val) }     // PPU ADDRESS
+            0x0007 => { self.ppuDataWrite(val) }   // PPU DATA
             //_ => panic!("Unknown PPU register: {}", *addr)
-            _=> {}
+            _ => {}
         }
         self.prevReg = val;
     }
@@ -633,7 +627,7 @@ impl<'a> Ppu<'a> {
     }
 
     fn oamAddress(&mut self, val: u8) -> () {
-       self.oamAddr = val;
+        self.oamAddr = val;
     }
 
     fn oamDataWrite(&mut self, val: u8) -> () {
@@ -653,8 +647,7 @@ impl<'a> Ppu<'a> {
             self.x = (val & 0x07);
             self.w = 1;
             //info!("PPUSCROLL val: {}, tAddr after first ppuScroll write: {}\n", val, self.t);
-        }
-        else {
+        } else {
 
             //info!("PPUSCROLL val: {}, tAddr before second ppuScroll write: {}\n", val, self.t);
             self.t = (self.t & 0x8FFF) | (((val & 0x07) as u16) << 12);
@@ -670,8 +663,7 @@ impl<'a> Ppu<'a> {
             self.t = (self.t & 0x80FF) | ((val as u16 & 0x3F) << 8);
             //info!("PPUADDR val: {}, tAddr after first ppuAddress write: {}\n", val, self.t);
             self.w = 1;
-        }
-        else {
+        } else {
             //info!("PPUADDR val: {}, tAddr before second ppuAddress write: {}\n", val, self.t);
             self.t = (self.t & 0xFF00) | (val as u16);
             //info!("PPUADDR val: {}, tAddr/vAddr after second ppuAddress write: {}\n", val, self.t);
@@ -688,7 +680,6 @@ impl<'a> Ppu<'a> {
     }
 
     fn ppuDataRead(&mut self) -> u8 {
-
         let mut tempBufData: u8 = 0;
         let vPtr = *&self.v;
         let mut ppuData = self.ppuBus.readPpuMem(vPtr);
@@ -697,23 +688,21 @@ impl<'a> Ppu<'a> {
             tempBufData = self.bufData;
             self.bufData = ppuData;
             ppuData = tempBufData;
-        }
-        else {
+        } else {
             // maps to nametable under the palette (palette address minus 0x1000)
             self.bufData = self.ppuBus.readPpuMem(vPtr - 0x1000);
         }
 
         self.v = if self.fIncMode == 0 { self.v.wrapping_add(1) } else { self.v.wrapping_add(32) };
         //info!("vAddr after ppuData read: {}\n", self.v);
-		return ppuData;
+        return ppuData;
     }
 
     fn incrementX(&mut self) -> () {
         if self.v & 0x001F == 0x001F {
             self.v &= !0x001F;
             self.v ^= 0x0400;
-        }
-        else {
+        } else {
             self.v += 1;
         }
     }
@@ -721,19 +710,16 @@ impl<'a> Ppu<'a> {
     fn incrementY(&mut self) -> () {
         if (self.v & 0x7000) != 0x7000 {
             self.v += 0x1000;
-        }
-        else {
+        } else {
             self.v &= !0x7000;
             let mut y: u16 = (self.v & 0x3E0) >> 5;
 
             if y == 29 {
                 y = 0;
                 self.v ^= 0x0800;
-            }
-            else if y == 31 {
+            } else if y == 31 {
                 y = 0;
-            }
-            else {
+            } else {
                 y += 1;
             }
             self.v = (self.v & !0x03E0) | (y << 5);
@@ -744,7 +730,7 @@ impl<'a> Ppu<'a> {
         self.bgShiftPatLo = (self.bgShiftPatLo & 0xFF00) | self.bgTileLsb as u16;
         self.bgShiftPatHi = (self.bgShiftPatHi & 0xFF00) | self.bgTileMsb as u16;
 
-        self.bgShiftAttrLo = (self.bgShiftAttrLo & 0xFF00) | (if self.bgTileAttr & 0b01 == 1    { 0x00FF } else { 0x0000 });
+        self.bgShiftAttrLo = (self.bgShiftAttrLo & 0xFF00) | (if self.bgTileAttr & 0b01 == 1 { 0x00FF } else { 0x0000 });
         self.bgShiftAttrHi = (self.bgShiftAttrHi & 0xFF00) | (if self.bgTileAttr & 0b10 == 0b10 { 0x00FF } else { 0x0000 });
     }
 
@@ -753,7 +739,6 @@ impl<'a> Ppu<'a> {
         self.bgShiftPatHi <<= 1;
         self.bgShiftAttrLo <<= 1;
         self.bgShiftAttrHi <<= 1;
-
     }
 
     fn updateSpriteShiftRegisters(&mut self) -> () {
@@ -761,8 +746,7 @@ impl<'a> Ppu<'a> {
             // only shift when scanline has hit the start of the sprite
             if self.vSpriteLine[(i * 4 + 3) as usize] > 0 {
                 self.vSpriteLine[(i * 4 + 3) as usize] -= 1;
-            }
-            else {
+            } else {
                 self.sprShiftPatLo[i as usize] <<= 1;
                 self.sprShiftPatHi[i as usize] <<= 1;
             }
