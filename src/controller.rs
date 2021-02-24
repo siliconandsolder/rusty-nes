@@ -23,7 +23,7 @@ impl Controller {
             controllerState: 0,
             controllerIdx: 0,
             strobe: false,
-		}
+        }
     }
 
     pub fn getState(&mut self) -> u8 {
