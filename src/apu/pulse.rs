@@ -70,7 +70,8 @@ impl Pulse {
             if self.timer == 0 {
                 self.timer = self.timerPeriod;
                 self.dutyValue = (self.dutyValue + 1) % 8;
-            } else {
+            }
+            else {
                 self.timer -= 1;
             }
         }
@@ -87,14 +88,17 @@ impl Pulse {
             self.envVolume = 15;
             self.envValue = self.envPeriod;
             self.envStart = false;
-        } else if self.envValue > 0 {
+        }
+        else if self.envValue > 0 {
             self.envValue -= 1;
-        } else {
+        }
+        else {
             self.envValue = self.envPeriod;
 
             if self.envLoop && self.envVolume == 0 {
                 self.envVolume = 15;
-            } else if self.envVolume > 0 {
+            }
+            else if self.envVolume > 0 {
                 self.envVolume -= 1;
             }
         }
@@ -108,9 +112,11 @@ impl Pulse {
 
             self.sweepValue = self.sweepPeriod;
             self.sweepReload = false;
-        } else if self.sweepValue > 0 {
+        }
+        else if self.sweepValue > 0 {
             self.sweepValue -= 1;
-        } else {
+        }
+        else {
             if self.sweepEnabled {
                 self.sweep();
             }
@@ -126,7 +132,8 @@ impl Pulse {
             if self.isChannelOne {
                 self.timerPeriod -= 1;
             }
-        } else {
+        }
+        else {
             self.timerPeriod += delta;
         }
     }
@@ -138,9 +145,11 @@ impl Pulse {
             self.timerPeriod > 0x7FF ||
             SQUARE_SEQUENCE_TABLE[self.dutyMode as usize][self.dutyValue as usize] == 0 {
             0
-        } else if self.envEnabled {
+        }
+        else if self.envEnabled {
             self.envVolume
-        } else {
+        }
+        else {
             self.volume
         };
     }

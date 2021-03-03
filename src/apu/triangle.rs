@@ -39,7 +39,8 @@ impl Triangle {
             if self.lengthCounterValue > 0 && self.linearCounterValue > 0 {
                 self.dutyValue = (self.dutyValue + 1) % 32;
             }
-        } else {
+        }
+        else {
             self.timer -= 1;
         }
     }
@@ -47,7 +48,8 @@ impl Triangle {
     pub fn clockLinearCounter(&mut self) -> () {
         if self.linearCounterReload {
             self.linearCounterValue = self.linearCounterPeriod;
-        } else if self.linearCounterValue > 0 {
+        }
+        else if self.linearCounterValue > 0 {
             self.linearCounterValue -= 1;
         }
 

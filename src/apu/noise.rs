@@ -52,7 +52,8 @@ impl Noise {
             let feedBack: u16 = (self.shift & 1) ^ ((self.shift >> shiftBit) & 1);
             self.shift >>= 1;
             self.shift |= feedBack << 14;
-        } else {
+        }
+        else {
             self.timer = 1;
         }
     }
@@ -62,14 +63,17 @@ impl Noise {
             self.envVolume = 15;
             self.envValue = self.envPeriod;
             self.envStart = false;
-        } else if self.envValue > 0 {
+        }
+        else if self.envValue > 0 {
             self.envValue -= 1;
-        } else {
+        }
+        else {
             self.envValue = self.envPeriod;
 
             if self.envLoop && self.envVolume == 0 {
                 self.envVolume = 15;
-            } else if self.envVolume > 0 {
+            }
+            else if self.envVolume > 0 {
                 self.envVolume -= 1;
             }
         }
@@ -90,7 +94,8 @@ impl Noise {
 
         return if self.envEnabled {
             self.envVolume
-        } else {
+        }
+        else {
             self.constVolume
         };
     }

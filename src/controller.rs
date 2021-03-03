@@ -41,7 +41,8 @@ impl Controller {
         if (val & 1) == 1 {
             self.strobe = true;
             self.controllerIdx = 0;
-        } else {
+        }
+        else {
             self.strobe = false;
         }
     }

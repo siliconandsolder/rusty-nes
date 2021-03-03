@@ -338,7 +338,8 @@ impl<'a> Clocked for Ppu<'a> {
                                 row = 7 - row;
                             }
                             sprAddress = ((self.fSprTile as u16) << 12) | (sprTile << 4) | row as u16;
-                        } else {
+                        }
+                        else {
                             // sprite flipped vertically
                             if sprAttr & 0x80 == 0x80 {
                                 row = 15 - row;
@@ -457,7 +458,8 @@ impl<'a> Clocked for Ppu<'a> {
                                 if self.cycle > 8 && self.cycle < 258 {
                                     self.fSprZero = 1;
                                 }
-                            } else {
+                            }
+                            else {
                                 if self.cycle > 0 && self.cycle < 258 {
                                     self.fSprZero = 1;
                                 }
@@ -647,7 +649,8 @@ impl<'a> Ppu<'a> {
             self.x = (val & 0x07);
             self.w = 1;
             //info!("PPUSCROLL val: {}, tAddr after first ppuScroll write: {}\n", val, self.t);
-        } else {
+        }
+        else {
 
             //info!("PPUSCROLL val: {}, tAddr before second ppuScroll write: {}\n", val, self.t);
             self.t = (self.t & 0x8FFF) | (((val & 0x07) as u16) << 12);
@@ -663,7 +666,8 @@ impl<'a> Ppu<'a> {
             self.t = (self.t & 0x80FF) | ((val as u16 & 0x3F) << 8);
             //info!("PPUADDR val: {}, tAddr after first ppuAddress write: {}\n", val, self.t);
             self.w = 1;
-        } else {
+        }
+        else {
             //info!("PPUADDR val: {}, tAddr before second ppuAddress write: {}\n", val, self.t);
             self.t = (self.t & 0xFF00) | (val as u16);
             //info!("PPUADDR val: {}, tAddr/vAddr after second ppuAddress write: {}\n", val, self.t);
@@ -688,7 +692,8 @@ impl<'a> Ppu<'a> {
             tempBufData = self.bufData;
             self.bufData = ppuData;
             ppuData = tempBufData;
-        } else {
+        }
+        else {
             // maps to nametable under the palette (palette address minus 0x1000)
             self.bufData = self.ppuBus.readPpuMem(vPtr - 0x1000);
         }
@@ -702,7 +707,8 @@ impl<'a> Ppu<'a> {
         if self.v & 0x001F == 0x001F {
             self.v &= !0x001F;
             self.v ^= 0x0400;
-        } else {
+        }
+        else {
             self.v += 1;
         }
     }
@@ -710,16 +716,19 @@ impl<'a> Ppu<'a> {
     fn incrementY(&mut self) -> () {
         if (self.v & 0x7000) != 0x7000 {
             self.v += 0x1000;
-        } else {
+        }
+        else {
             self.v &= !0x7000;
             let mut y: u16 = (self.v & 0x3E0) >> 5;
 
             if y == 29 {
                 y = 0;
                 self.v ^= 0x0800;
-            } else if y == 31 {
+            }
+            else if y == 31 {
                 y = 0;
-            } else {
+            }
+            else {
                 y += 1;
             }
             self.v = (self.v & !0x03E0) | (y << 5);
@@ -746,7 +755,8 @@ impl<'a> Ppu<'a> {
             // only shift when scanline has hit the start of the sprite
             if self.vSpriteLine[(i * 4 + 3) as usize] > 0 {
                 self.vSpriteLine[(i * 4 + 3) as usize] -= 1;
-            } else {
+            }
+            else {
                 self.sprShiftPatLo[i as usize] <<= 1;
                 self.sprShiftPatHi[i as usize] <<= 1;
             }

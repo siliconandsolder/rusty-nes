@@ -108,7 +108,8 @@ impl<'a> Clocked for Cpu<'a> {
         if self.triggerIrq {
             self.irq();
             return;
-        } else if self.triggerNmi {
+        }
+        else if self.triggerNmi {
             self.nmi();
             return;
         }
@@ -294,7 +295,8 @@ impl<'a> Cpu<'a> {
         // read and write on alternating cycles
         if self.oamCycles % 2 == 0 {
             self.oamByte = self.readMem8(*&self.oamPage);
-        } else {
+        }
+        else {
             self.memory.borrow_mut().cpuWriteOam(*&self.oamByte);
             self.oamPage = self.oamPage.wrapping_add(1);
 
@@ -352,7 +354,8 @@ impl<'a> Cpu<'a> {
         // if the inputs have the same sign, and the input and result have different signs
         if ((self.regA as u16 ^ oldVal) & 0x80) == 0 && ((self.regA as u16 ^ newVal) & 0x80) != 0 {
             self.flags.overflow = 1;
-        } else {
+        }
+        else {
             self.flags.overflow = 0;
         }
 
@@ -396,7 +399,8 @@ impl<'a> Cpu<'a> {
             self.flags.carry = (self.regA >> 7) & 1;
             self.regA <<= 1;
             self.setZNFlag(self.regA);
-        } else {
+        }
+        else {
             let mut val = self.readMem8(target.unwrap());
 
             // set the carry flag to the value's MSB
@@ -513,7 +517,8 @@ impl<'a> Cpu<'a> {
         let val = self.readMem8(target.unwrap());
         if self.regA >= val {
             self.flags.carry = 1;
-        } else {
+        }
+        else {
             self.flags.carry = 0;
         }
 
@@ -524,7 +529,8 @@ impl<'a> Cpu<'a> {
         let val = self.readMem8(target.unwrap());
         if self.regX >= val {
             self.flags.carry = 1;
-        } else {
+        }
+        else {
             self.flags.carry = 0;
         }
 
@@ -535,7 +541,8 @@ impl<'a> Cpu<'a> {
         let val = self.readMem8(target.unwrap());
         if self.regY >= val {
             self.flags.carry = 1;
-        } else {
+        }
+        else {
             self.flags.carry = 0;
         }
 
@@ -639,7 +646,8 @@ impl<'a> Cpu<'a> {
 
             self.regA >>= 1;
             self.setZNFlag(self.regA);
-        } else {
+        }
+        else {
             let mut val = self.readMem8(target.unwrap());
 
             // set the carry flag to the value's LSB
@@ -690,7 +698,8 @@ impl<'a> Cpu<'a> {
             self.regA <<= 1;
             self.regA |= oldCarry;
             self.setZNFlag(self.regA);
-        } else {
+        }
+        else {
             let mut val = self.readMem8(target.unwrap());
             self.flags.carry = (val >> 7) & 1;
             val <<= 1;
@@ -708,7 +717,8 @@ impl<'a> Cpu<'a> {
             self.regA >>= 1;
             self.regA |= (oldCarry << 7);
             self.setZNFlag(self.regA);
-        } else {
+        }
+        else {
             let mut val = self.readMem8(target.unwrap());
             self.flags.carry = val & 1;
             val >>= 1;
@@ -754,7 +764,8 @@ impl<'a> Cpu<'a> {
         // if the inputs have the same sign, and the input and result have different signs
         if ((self.regA ^ oldVal) & 0x80) != 0 && ((self.regA ^ newVal) & 0x80) != 0 {
             self.flags.overflow = 1;
-        } else {
+        }
+        else {
             self.flags.overflow = 0;
         }
 
@@ -887,7 +898,8 @@ impl<'a> Cpu<'a> {
 
                 if zpgAddr == 0xFF {
                     storedAddr = ((self.readMem8(0x00) as u16) << 8) | self.readMem8(0xFF) as u16;
-                } else {
+                }
+                else {
                     storedAddr = self.readMem16(zpgAddr as u16);
                 }
                 let target = storedAddr.wrapping_add(self.regY as u16);
@@ -900,7 +912,8 @@ impl<'a> Cpu<'a> {
 
                 if zpgAddr == 0xFF {
                     storedAddr = ((self.readMem8(0x00) as u16) << 8) | self.readMem8(0xFF) as u16;
-                } else {
+                }
+                else {
                     storedAddr = self.readMem16(zpgAddr as u16);
                 }
 
@@ -1022,7 +1035,8 @@ impl<'a> Cpu<'a> {
     fn setZFlag(&mut self, ref result: u8) -> () {
         if *result == 0 {
             self.flags.zero = 1;
-        } else {
+        }
+        else {
             self.flags.zero = 0;
         }
     }
@@ -1031,7 +1045,8 @@ impl<'a> Cpu<'a> {
     fn setNFlag(&mut self, ref result: u8) -> () {
         if *result & 0x80 != 0 {
             self.flags.negative = 1;
-        } else {
+        }
+        else {
             self.flags.negative = 0;
         }
     }

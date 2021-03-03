@@ -63,7 +63,8 @@ impl<'a> DMC<'a> {
                 if self.directLoad <= 125 {
                     self.directLoad += 2;
                 }
-            } else {
+            }
+            else {
                 if self.directLoad >= 2 {
                     self.directLoad -= 2;
                 }
@@ -71,7 +72,8 @@ impl<'a> DMC<'a> {
 
             self.shift >>= 1;
             self.bitCounter -= 1;
-        } else {
+        }
+        else {
             self.rateValue -= 1;
         }
     }

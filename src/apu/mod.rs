@@ -239,7 +239,8 @@ impl<'a> Apu<'a> {
                 self.dmc.enabled = (data & 16) == 16;
                 if !self.dmc.enabled {
                     self.dmc.curSampleLength = 0;
-                } else {
+                }
+                else {
                     if self.dmc.curSampleLength == 0 {
                         self.dmc.reset();
                     }

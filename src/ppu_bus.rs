@@ -29,7 +29,8 @@ impl PpuBus {
         let addr = *addr & 0x3FFF;
         if addr < 0x2000 {
             return self.cart.borrow_mut().ppuRead(addr);
-        } else if addr < 0x3F00 {
+        }
+        else if addr < 0x3F00 {
             let realAddr = addr & 0x0FFF;
 
             match self.cart.borrow().getMirrorType() {

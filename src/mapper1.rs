@@ -43,7 +43,8 @@ impl Mapper for Mapper1 {
     fn cpuMapRead(&mut self, ref addr: u16) -> Option<u32> {
         if *addr >= 0x6000 && *addr <= 0x7FFF {
             return Some(self.vPrgRam[(*addr & 0x1FFF) as usize] as u32);
-        } else if *addr >= 0x8000 {
+        }
+        else if *addr >= 0x8000 {
             let prgBankMode = (self.ctrlReg & 0b01100) >> 2;
             return match prgBankMode {
                 0 | 1 => {
@@ -53,7 +54,8 @@ impl Mapper for Mapper1 {
                     if *addr <= 0xBFFF {
                         // first bank is fixed to the start
                         Some(self.prgBank0 as u32 * 0x4000 + (*addr as u32 & 0x3FFF))
-                    } else {
+                    }
+                    else {
                         Some(self.prgBank1 as u32 * 0x4000 + (*addr as u32 & 0x3FFF))
                     }
                 }
@@ -68,11 +70,13 @@ impl Mapper for Mapper1 {
         if *addr >= 0x6000 && *addr <= 0x7FFF {
             self.vPrgRam[(*addr & 0x1FFF) as usize] = *val;
             return None;
-        } else if *addr >= 0x8000 && *addr <= 0xFFFF {
+        }
+        else if *addr >= 0x8000 && *addr <= 0xFFFF {
             if val & 0x80 == 0x80 {
                 self.resetShiftRegister();
                 self.ctrlReg |= 0xC0;
-            } else {
+            }
+            else {
                 self.shiftReg >>= 1;
                 self.shiftReg |= ((*val & 1) << 4);
                 self.shiftCount += 1;
@@ -124,7 +128,8 @@ impl Mapper for Mapper1 {
                 1 => { // 4k mode
                     return if *addr < 0x1000 {
                         Some(self.chrBank0 as u32 * 0x1000 + (*addr as u32 & 0x0FFF))
-                    } else {
+                    }
+                    else {
                         Some(self.chrBank1 as u32 * 0x1000 + (*addr as u32 & 0x0FFF))
                     };
                 }
