@@ -45,7 +45,7 @@ impl Mapper for Mapper1 {
             return Some(self.vPrgRam[(*addr & 0x1FFF) as usize] as u32);
         }
         else if *addr >= 0x8000 {
-            let prgBankMode = (self.ctrlReg & 0b01100) >> 2;
+            let prgBankMode = (self.ctrlReg >> 2) & 3;
             return match prgBankMode {
                 0 | 1 => {
                     Some((self.prgBank0 as u32) * 0x8000 + (*addr as u32 & 0x7FFF))
@@ -73,18 +73,21 @@ impl Mapper for Mapper1 {
         }
         else if *addr >= 0x8000 && *addr <= 0xFFFF {
             if val & 0x80 == 0x80 {
-                self.resetShiftRegister();
+                //self.resetShiftRegister();
+                self.shiftReg = 0x10;
                 self.ctrlReg |= 0xC0;
             }
             else {
+                let complete: bool = (self.shiftReg & 1) == 1;
+
                 self.shiftReg >>= 1;
                 self.shiftReg |= ((*val & 1) << 4);
-                self.shiftCount += 1;
+                //self.shiftCount += 1;
 
                 // on the fifth CPU write...
-                if self.shiftCount == 5 {
+                if complete {
                     // copy to internal register
-                    let register = (*addr & 0x6000) >> 13; // get bits 13 and 14
+                    let register = (*addr >> 13) & 3; // get bits 13 and 14
                     match register {
                         0 => {
                             self.ctrlReg = self.shiftReg;
@@ -123,7 +126,7 @@ impl Mapper for Mapper1 {
 
     fn ppuMapRead(&mut self, ref addr: u16) -> Option<u32> {
         if *addr < 0x2000 {
-            let chrBankMode = (self.ctrlReg & 0b10000) >> 4;
+            let chrBankMode = (self.ctrlReg >> 4) & 1;
             match chrBankMode {
                 1 => { // 4k mode
                     return if *addr < 0x1000 {
