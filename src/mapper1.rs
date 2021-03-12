@@ -3,15 +3,14 @@
 #![allow(exceeding_bitshifts)]
 
 use crate::mapper::{Mapper, MIRROR};
+use sdl2::gfx::imagefilter::add;
 
 pub struct Mapper1 {
     shiftReg: u8,
-    shiftCount: u8,
     ctrlReg: u8,
     chrBank0: u8,
     chrBank1: u8,
-    prgBank0: u8,
-    prgBank1: u8,
+    prgBank: u8,
     numPrgBanks: u8,
     numChrBanks: u8,
     vPrgRam: Vec<u8>,
@@ -21,12 +20,10 @@ impl Mapper1 {
     pub fn new(numPrgBanks: u8, numChrBanks: u8) -> Self {
         Mapper1 {
             shiftReg: 0,
-            shiftCount: 0,
-            ctrlReg: 0b11111,
+            ctrlReg: 0,
             chrBank0: 0,
             chrBank1: 0,
-            prgBank0: 0,
-            prgBank1: 0,
+            prgBank: 0,
             numPrgBanks,
             numChrBanks,
             vPrgRam: vec![0; 0x8000],
@@ -35,59 +32,62 @@ impl Mapper1 {
 
     fn resetShiftRegister(&mut self) -> () {
         self.shiftReg = 0x10;
-        self.shiftCount = 0;
     }
 }
 
 impl Mapper for Mapper1 {
     fn cpuMapRead(&mut self, ref addr: u16) -> Option<u32> {
-        if *addr >= 0x6000 && *addr <= 0x7FFF {
+
+        if *addr < 0x8000 {
             return Some(self.vPrgRam[(*addr & 0x1FFF) as usize] as u32);
         }
-        else if *addr >= 0x8000 {
-            let prgBankMode = (self.ctrlReg >> 2) & 3;
-            return match prgBankMode {
+        else {
+            let prgMode = (self.ctrlReg >> 2) & 3;
+            match prgMode {
                 0 | 1 => {
-                    Some((self.prgBank0 as u32) * 0x8000 + (*addr as u32 & 0x7FFF))
+                    return Some(((self.prgBank & 0x1E) as u16 * 0x8000 + (*addr & 0x7FFF)) as u32);
                 }
-                _ => {
-                    if *addr <= 0xBFFF {
-                        // first bank is fixed to the start
-                        Some(self.prgBank0 as u32 * 0x4000 + (*addr as u32 & 0x3FFF))
+                2 => {
+                    if *addr < 0xC000 {
+                        return Some((*addr & 0x3FFF) as u32);
                     }
                     else {
-                        Some(self.prgBank1 as u32 * 0x4000 + (*addr as u32 & 0x3FFF))
+                        return Some((self.prgBank as u16 * 0x4000 + (*addr & 0x3FFF)) as u32);
                     }
                 }
-            };
+                3 => {
+                    if *addr >= 0xC000 {
+                        return Some(((self.numPrgBanks - 1) as u16 * 0x4000 + (*addr & 0x3FFF)) as u32);
+                    }
+                    else {
+                        return Some((self.prgBank as u16 * 0x4000 + (*addr & 0x3FFF)) as u32);
+                    }
+                }
+                _ => {}
+            }
         }
-
 
         return None;
     }
 
     fn cpuMapWrite(&mut self, ref addr: u16, ref val: u8) -> Option<u32> {
-        if *addr >= 0x6000 && *addr <= 0x7FFF {
+
+        if *addr < 0x8000 {
             self.vPrgRam[(*addr & 0x1FFF) as usize] = *val;
-            return None;
         }
-        else if *addr >= 0x8000 && *addr <= 0xFFFF {
+        else if *addr >= 0x8000 {
             if val & 0x80 == 0x80 {
-                //self.resetShiftRegister();
-                self.shiftReg = 0x10;
+                self.shiftReg = 0;
                 self.ctrlReg |= 0xC0;
             }
             else {
                 let complete: bool = (self.shiftReg & 1) == 1;
-
                 self.shiftReg >>= 1;
-                self.shiftReg |= ((*val & 1) << 4);
-                //self.shiftCount += 1;
+                self.shiftReg |= (*val & 1) << 4;
 
-                // on the fifth CPU write...
                 if complete {
-                    // copy to internal register
-                    let register = (*addr >> 13) & 3; // get bits 13 and 14
+
+                    let register = (*addr >> 13) & 3;
                     match register {
                         0 => {
                             self.ctrlReg = self.shiftReg;
@@ -99,46 +99,41 @@ impl Mapper for Mapper1 {
                             self.chrBank1 = self.shiftReg;
                         }
                         3 => {
-                            let prgBankMode = (self.ctrlReg & 0b01100) >> 2;
-                            match prgBankMode {
-                                0 | 1 => {
-                                    self.prgBank0 = (self.shiftReg & 0b1110) >> 1;
-                                }
-                                2 => {
-                                    self.prgBank0 = 0;
-                                    self.prgBank1 = self.shiftReg & 0b1111;
-                                }
-                                3 => {
-                                    self.prgBank0 = self.shiftReg & 0b1111;
-                                    self.prgBank1 = self.numPrgBanks - 1;
-                                }
-                                _ => { panic!("unknown PRG bank mode: {}", prgBankMode) }
-                            }
+                            self.prgBank = self.shiftReg;
                         }
                         _ => {}
                     }
-                    self.resetShiftRegister();
+
+                    self.shiftReg = 0x10;
                 }
             }
         }
+
+
         return None;
     }
 
     fn ppuMapRead(&mut self, ref addr: u16) -> Option<u32> {
-        if *addr < 0x2000 {
-            let chrBankMode = (self.ctrlReg >> 4) & 1;
-            match chrBankMode {
-                1 => { // 4k mode
-                    return if *addr < 0x1000 {
-                        Some(self.chrBank0 as u32 * 0x1000 + (*addr as u32 & 0x0FFF))
+        if *addr < 2000 {
+            if self.numChrBanks == 0 {
+                return Some(*addr as u32);
+            }
+
+            let chrMode = (self.ctrlReg >> 4) & 1;
+
+            match chrMode {
+                0 => {
+                    return Some(((self.chrBank0 as u16 & 0x1E) * 0x2000 + *addr) as u32);
+                }
+                1 => {
+                    if *addr < 0x1000 {
+                        return Some((self.chrBank0 as u16 * 0x1000 + *addr) as u32);
                     }
                     else {
-                        Some(self.chrBank1 as u32 * 0x1000 + (*addr as u32 & 0x0FFF))
-                    };
+                        return Some((self.chrBank1 as u16 * 0x1000 + (*addr & 0x0FFF)) as u32);
+                    }
                 }
-                _ => { // 8k mode
-                    return Some((self.chrBank0 & 0b1_1110) as u32 * 0x2000 + (*addr as u32 & 0x1FFF));
-                }
+                _ => {}
             }
         }
 
@@ -146,11 +141,11 @@ impl Mapper for Mapper1 {
     }
 
     fn ppuMapWrite(&mut self, ref addr: u16, ref val: u8) -> Option<u32> {
-        if *addr < 0x2000 {
-            if self.numChrBanks == 0 {
-                return Some(*addr as u32);    // Carts with CHR Ram only have 8KB
-            }
+
+        if *addr < 2000 && self.numChrBanks == 0 {
+            return Some(*addr as u32);
         }
+
         return None;
     }
 
