@@ -45,22 +45,22 @@ impl Mapper for Mapper1 {
             let prgMode = (self.ctrlReg >> 2) & 3;
             match prgMode {
                 0 | 1 => {
-                    return Some(((self.prgBank & 0x1E) as u16 * 0x8000 + (*addr & 0x7FFF)) as u32);
+                    return Some(((self.prgBank & 0xE) as u32 * 0x8000 + (*addr as u32 & 0x7FFF)));
                 }
                 2 => {
                     if *addr < 0xC000 {
                         return Some((*addr & 0x3FFF) as u32);
                     }
                     else {
-                        return Some((self.prgBank as u16 * 0x4000 + (*addr & 0x3FFF)) as u32);
+                        return Some((self.prgBank as u32 * 0x4000 + (*addr as u32 & 0x3FFF)));
                     }
                 }
                 3 => {
                     if *addr >= 0xC000 {
-                        return Some(((self.numPrgBanks - 1) as u16 * 0x4000 + (*addr & 0x3FFF)) as u32);
+                        return Some(((self.numPrgBanks - 1) as u32 * 0x4000 + (*addr as u32 & 0x3FFF)));
                     }
                     else {
-                        return Some((self.prgBank as u16 * 0x4000 + (*addr & 0x3FFF)) as u32);
+                        return Some((self.prgBank as u32 * 0x4000 + (*addr as u32 & 0x3FFF)));
                     }
                 }
                 _ => {}
@@ -72,7 +72,7 @@ impl Mapper for Mapper1 {
 
     fn cpuMapWrite(&mut self, ref addr: u16, ref val: u8) -> Option<u32> {
 
-        if *addr < 0x8000 {
+        if *addr >= 0x6000 && *addr <= 0x7FFF {
             self.vPrgRam[(*addr & 0x1FFF) as usize] = *val;
         }
         else if *addr >= 0x8000 {
@@ -123,14 +123,14 @@ impl Mapper for Mapper1 {
 
             match chrMode {
                 0 => {
-                    return Some(((self.chrBank0 as u16 & 0x1E) * 0x2000 + *addr) as u32);
+                    return Some(((self.chrBank0 as u32 & 0xE) * 0x2000 + *addr as u32));
                 }
                 1 => {
                     if *addr < 0x1000 {
-                        return Some((self.chrBank0 as u16 * 0x1000 + *addr) as u32);
+                        return Some((self.chrBank0 as u32 * 0x1000 + *addr as u32));
                     }
                     else {
-                        return Some((self.chrBank1 as u16 * 0x1000 + (*addr & 0x0FFF)) as u32);
+                        return Some((self.chrBank1 as u32 * 0x1000 + (*addr as u32 & 0x0FFF)));
                     }
                 }
                 _ => {}
