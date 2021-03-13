@@ -48,19 +48,17 @@ impl Mapper for Mapper1 {
                     return Some(((self.prgBank & 0xE) as u32 * 0x8000 + (*addr as u32 & 0x7FFF)));
                 }
                 2 => {
-                    if *addr < 0xC000 {
-                        return Some((*addr & 0x3FFF) as u32);
-                    }
-                    else {
-                        return Some((self.prgBank as u32 * 0x4000 + (*addr as u32 & 0x3FFF)));
+                    return if *addr < 0xC000 {
+                        Some((*addr & 0x3FFF) as u32)
+                    } else {
+                        Some((self.prgBank as u32 * 0x4000 + (*addr as u32 & 0x3FFF)))
                     }
                 }
                 3 => {
-                    if *addr >= 0xC000 {
-                        return Some(((self.numPrgBanks - 1) as u32 * 0x4000 + (*addr as u32 & 0x3FFF)));
-                    }
-                    else {
-                        return Some((self.prgBank as u32 * 0x4000 + (*addr as u32 & 0x3FFF)));
+                    return if *addr >= 0xC000 {
+                        Some(((self.numPrgBanks - 1) as u32 * 0x4000 + (*addr as u32 & 0x3FFF)))
+                    } else {
+                        Some((self.prgBank as u32 * 0x4000 + (*addr as u32 & 0x3FFF)))
                     }
                 }
                 _ => {}
@@ -77,7 +75,7 @@ impl Mapper for Mapper1 {
         }
         else if *addr >= 0x8000 {
             if val & 0x80 == 0x80 {
-                self.shiftReg = 0;
+                self.shiftReg = 0x10;
                 self.ctrlReg |= 0xC0;
             }
             else {
@@ -99,7 +97,15 @@ impl Mapper for Mapper1 {
                             self.chrBank1 = self.shiftReg;
                         }
                         3 => {
-                            self.prgBank = self.shiftReg;
+                            let prgBankMode = (self.ctrlReg & 0b01100) >> 2;
+                            match prgBankMode {
+                                0 | 1 => {
+                                    self.prgBank = (self.shiftReg & 0b1110) >> 2;
+                                }
+                                _ => {
+                                    self.prgBank = self.shiftReg & 0b1111;
+                                }
+                            }
                         }
                         _ => {}
                     }
