@@ -120,7 +120,7 @@ impl Mapper for Mapper1 {
     }
 
     fn ppuMapRead(&mut self, ref addr: u16) -> Option<u32> {
-        if *addr < 2000 {
+        if *addr < 0x2000 {
             if self.numChrBanks == 0 {
                 return Some(*addr as u32);
             }
@@ -148,7 +148,7 @@ impl Mapper for Mapper1 {
 
     fn ppuMapWrite(&mut self, ref addr: u16, ref val: u8) -> Option<u32> {
 
-        if *addr < 2000 && self.numChrBanks == 0 {
+        if *addr < 0x2000 && self.numChrBanks == 0 {
             return Some(*addr as u32);
         }
 
