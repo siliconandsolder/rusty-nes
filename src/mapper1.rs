@@ -88,13 +88,13 @@ impl Mapper for Mapper1 {
                     let register = (*addr >> 13) & 3;
                     match register {
                         0 => {
-                            self.ctrlReg = self.shiftReg;
+                            self.ctrlReg = self.shiftReg & 0x1F;
                         }
                         1 => {
-                            self.chrBank0 = self.shiftReg;
+                            self.chrBank0 = self.shiftReg & 0x1F;
                         }
                         2 => {
-                            self.chrBank1 = self.shiftReg;
+                            self.chrBank1 = self.shiftReg & 0x1F;
                         }
                         3 => {
                             let prgBankMode = (self.ctrlReg & 0b01100) >> 2;
@@ -129,7 +129,7 @@ impl Mapper for Mapper1 {
 
             match chrMode {
                 0 => {
-                    return Some(((self.chrBank0 as u32 & 0xE) * 0x2000 + *addr as u32));
+                    return Some(((self.chrBank0 as u32 & 0x1E) * 0x2000 + *addr as u32));
                 }
                 1 => {
                     if *addr < 0x1000 {
