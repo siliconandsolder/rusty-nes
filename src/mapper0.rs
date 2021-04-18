@@ -6,7 +6,7 @@ use crate::mapper::{Mapper, MIRROR};
 pub struct Mapper0 {
     numPrgBanks: u8,
     numChrBanks: u8,
-    mirrorType: MIRROR
+    mirrorType: MIRROR,
 }
 
 impl Mapper0 {
@@ -14,7 +14,7 @@ impl Mapper0 {
         Mapper0 {
             numPrgBanks,
             numChrBanks,
-            mirrorType
+            mirrorType,
         }
     }
 }
@@ -60,6 +60,6 @@ impl Mapper for Mapper0 {
 
     #[inline]
     fn getMirrorType(&self) -> MIRROR {
-         return self.mirrorType;
+        return self.mirrorType;
     }
 }

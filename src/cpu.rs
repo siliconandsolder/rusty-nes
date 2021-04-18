@@ -17,13 +17,13 @@ use std::io::Write;
 use crate::opcode_info::OpCode::BRK;
 
 const CARRY_POS: u8 = 0;
-const ZERO_POS: u8  = 1;
-const INT_POS: u8   = 2;
-const DEC_POS: u8   = 3;
-const BRK_POS: u8   = 4;
-const U_POS: u8     = 5;
-const OVER_POS: u8  = 6;
-const NEG_POS: u8   = 7;
+const ZERO_POS: u8 = 1;
+const INT_POS: u8 = 2;
+const DEC_POS: u8 = 3;
+const BRK_POS: u8 = 4;
+const U_POS: u8 = 5;
+const OVER_POS: u8 = 6;
+const NEG_POS: u8 = 7;
 
 struct Flags {
     carry: u8,
@@ -46,7 +46,7 @@ impl Flags {
             brk: 0,
             unused: 0,
             overflow: 0,
-            negative: 0
+            negative: 0,
         }
     }
 }
@@ -91,13 +91,12 @@ pub struct Cpu<'a> {
 
     // debug
     log: File,
-    counter: u16
+    counter: u16,
 }
 
 impl<'a> Clocked for Cpu<'a> {
     #[inline]
     fn cycle(&mut self) {
-
         self.isEvenCycle = !self.isEvenCycle;
 
         if self.waitCycles != 0 {
@@ -148,13 +147,11 @@ impl<'a> Clocked for Cpu<'a> {
         if boundaryCrossed { self.waitCycles += opInfo.xCycles as u16; }
 
         // debug print
-
     }
 }
 
 impl<'a> Cpu<'a> {
-
-    pub fn new (memory: Rc<RefCell<DataBus>>) -> Cpu {
+    pub fn new(memory: Rc<RefCell<DataBus>>) -> Cpu {
 
         // load reset vector into program counter
         let lo = memory.borrow().readCpuMem(0xFFFC);
@@ -180,7 +177,7 @@ impl<'a> Cpu<'a> {
             oamCycles: 0,
             log: File::create("log.txt").unwrap(),
             counter: 0,
-            isEvenCycle: false
+            isEvenCycle: false,
         };
 
         cpu.setFlags(0x24);
@@ -196,80 +193,80 @@ impl<'a> Cpu<'a> {
     #[inline]
     fn executeInstruction(&mut self, opCode: OpMnemonic, target: Option<u16>) -> () {
         match opCode {
-            OpMnemonic::ADC => { self.adc(target) },
+            OpMnemonic::ADC => { self.adc(target) }
             OpMnemonic::AHX => {}
             OpMnemonic::ANC => { self.anc(target) }
-            OpMnemonic::AND => { self.and(target) },
-            OpMnemonic::ALR => { self.alr(target) },
-            OpMnemonic::ARR => { self.arr(target) },
-            OpMnemonic::ASL => { self.asl(target) },
-            OpMnemonic::AXS => { self.axs(target) },
-            OpMnemonic::BCC => { self.bcc(target) },
-            OpMnemonic::BCS => { self.bcs(target) },
-            OpMnemonic::BEQ => { self.beq(target) },
-            OpMnemonic::BIT => { self.bit(target) },
-            OpMnemonic::BMI => { self.bmi(target) },
-            OpMnemonic::BNE => { self.bne(target) },
-            OpMnemonic::BPL => { self.bpl(target) },
-            OpMnemonic::BRK => { self.brk(target) },
-            OpMnemonic::BVC => { self.bvc(target) },
-            OpMnemonic::BVS => { self.bvs(target) },
-            OpMnemonic::CLC => { self.clc(target) },
-            OpMnemonic::CLD => { self.cld(target) },
-            OpMnemonic::CLI => { self.cli(target) },
-            OpMnemonic::CLV => { self.clv(target) },
-            OpMnemonic::CMP => { self.cmp(target) },
-            OpMnemonic::CPX => { self.cpx(target) },
-            OpMnemonic::CPY => { self.cpy(target) },
-			OpMnemonic::DCP => { self.dcp(target) },
-            OpMnemonic::DEC => { self.dec(target) },
-            OpMnemonic::DEX => { self.dex(target) },
-            OpMnemonic::DEY => { self.dey(target) },
-            OpMnemonic::EOR => { self.eor(target) },
-            OpMnemonic::INC => { self.inc(target) },
-            OpMnemonic::INX => { self.inx(target) },
-            OpMnemonic::INY => { self.iny(target) },
-            OpMnemonic::ISC => { self.isc(target) },
-            OpMnemonic::JMP => { self.jmp(target) },
-            OpMnemonic::JSR => { self.jsr(target) },
+            OpMnemonic::AND => { self.and(target) }
+            OpMnemonic::ALR => { self.alr(target) }
+            OpMnemonic::ARR => { self.arr(target) }
+            OpMnemonic::ASL => { self.asl(target) }
+            OpMnemonic::AXS => { self.axs(target) }
+            OpMnemonic::BCC => { self.bcc(target) }
+            OpMnemonic::BCS => { self.bcs(target) }
+            OpMnemonic::BEQ => { self.beq(target) }
+            OpMnemonic::BIT => { self.bit(target) }
+            OpMnemonic::BMI => { self.bmi(target) }
+            OpMnemonic::BNE => { self.bne(target) }
+            OpMnemonic::BPL => { self.bpl(target) }
+            OpMnemonic::BRK => { self.brk(target) }
+            OpMnemonic::BVC => { self.bvc(target) }
+            OpMnemonic::BVS => { self.bvs(target) }
+            OpMnemonic::CLC => { self.clc(target) }
+            OpMnemonic::CLD => { self.cld(target) }
+            OpMnemonic::CLI => { self.cli(target) }
+            OpMnemonic::CLV => { self.clv(target) }
+            OpMnemonic::CMP => { self.cmp(target) }
+            OpMnemonic::CPX => { self.cpx(target) }
+            OpMnemonic::CPY => { self.cpy(target) }
+            OpMnemonic::DCP => { self.dcp(target) }
+            OpMnemonic::DEC => { self.dec(target) }
+            OpMnemonic::DEX => { self.dex(target) }
+            OpMnemonic::DEY => { self.dey(target) }
+            OpMnemonic::EOR => { self.eor(target) }
+            OpMnemonic::INC => { self.inc(target) }
+            OpMnemonic::INX => { self.inx(target) }
+            OpMnemonic::INY => { self.iny(target) }
+            OpMnemonic::ISC => { self.isc(target) }
+            OpMnemonic::JMP => { self.jmp(target) }
+            OpMnemonic::JSR => { self.jsr(target) }
             OpMnemonic::KIL => {}
             OpMnemonic::LAS => {}
-            OpMnemonic::LAX => { self.lax(target) },
-            OpMnemonic::LDA => { self.lda(target) },
-            OpMnemonic::LDX => { self.ldx(target) },
-            OpMnemonic::LDY => { self.ldy(target) },
-            OpMnemonic::LSR => { self.lsr(target) },
-            OpMnemonic::NOP => { self.nop(target) },
-            OpMnemonic::ORA => { self.ora(target) },
-            OpMnemonic::PHA => { self.pha(target) },
-            OpMnemonic::PHP => { self.php(target) },
-            OpMnemonic::PLA => { self.pla(target) },
-            OpMnemonic::PLP => { self.plp(target) },
-            OpMnemonic::RLA => { self.rla(target) },
-            OpMnemonic::ROL => { self.rol(target) },
-            OpMnemonic::ROR => { self.ror(target) },
-            OpMnemonic::RRA => { self.rra(target) },
-            OpMnemonic::RTI => { self.rti(target) },
-            OpMnemonic::RTS => { self.rts(target) },
-            OpMnemonic::SAX => { self.sax(target) },
-            OpMnemonic::SBC => { self.sbc(target) },
-            OpMnemonic::SEC => { self.sec(target) },
-            OpMnemonic::SED => { self.sed(target) },
-            OpMnemonic::SEI => { self.sei(target) },
+            OpMnemonic::LAX => { self.lax(target) }
+            OpMnemonic::LDA => { self.lda(target) }
+            OpMnemonic::LDX => { self.ldx(target) }
+            OpMnemonic::LDY => { self.ldy(target) }
+            OpMnemonic::LSR => { self.lsr(target) }
+            OpMnemonic::NOP => { self.nop(target) }
+            OpMnemonic::ORA => { self.ora(target) }
+            OpMnemonic::PHA => { self.pha(target) }
+            OpMnemonic::PHP => { self.php(target) }
+            OpMnemonic::PLA => { self.pla(target) }
+            OpMnemonic::PLP => { self.plp(target) }
+            OpMnemonic::RLA => { self.rla(target) }
+            OpMnemonic::ROL => { self.rol(target) }
+            OpMnemonic::ROR => { self.ror(target) }
+            OpMnemonic::RRA => { self.rra(target) }
+            OpMnemonic::RTI => { self.rti(target) }
+            OpMnemonic::RTS => { self.rts(target) }
+            OpMnemonic::SAX => { self.sax(target) }
+            OpMnemonic::SBC => { self.sbc(target) }
+            OpMnemonic::SEC => { self.sec(target) }
+            OpMnemonic::SED => { self.sed(target) }
+            OpMnemonic::SEI => { self.sei(target) }
             OpMnemonic::SHY => { self.shy(target) }
             OpMnemonic::SHX => { self.shx(target) }
-            OpMnemonic::SLO => { self.slo(target) },
-            OpMnemonic::SRE => { self.sre(target) },
-            OpMnemonic::STA => { self.sta(target) },
-            OpMnemonic::STX => { self.stx(target) },
-            OpMnemonic::STY => { self.sty(target) },
+            OpMnemonic::SLO => { self.slo(target) }
+            OpMnemonic::SRE => { self.sre(target) }
+            OpMnemonic::STA => { self.sta(target) }
+            OpMnemonic::STX => { self.stx(target) }
+            OpMnemonic::STY => { self.sty(target) }
             OpMnemonic::TAS => {}
-            OpMnemonic::TAX => { self.tax(target) },
-            OpMnemonic::TAY => { self.tay(target) },
-            OpMnemonic::TSX => { self.tsx(target) },
-            OpMnemonic::TXA => { self.txa(target) },
-            OpMnemonic::TXS => { self.txs(target) },
-            OpMnemonic::TYA => { self.tya(target) },
+            OpMnemonic::TAX => { self.tax(target) }
+            OpMnemonic::TAY => { self.tay(target) }
+            OpMnemonic::TSX => { self.tsx(target) }
+            OpMnemonic::TXA => { self.txa(target) }
+            OpMnemonic::TXS => { self.txs(target) }
+            OpMnemonic::TYA => { self.tya(target) }
             OpMnemonic::XAA => {}
         };
     }
@@ -347,7 +344,7 @@ impl<'a> Cpu<'a> {
         self.triggerIrq = false;
     }
 
-    fn adc(&mut self, target: Option<u16>) ->() {
+    fn adc(&mut self, target: Option<u16>) -> () {
         let oldVal = self.readMem8(target.unwrap()) as u16;
         let newVal = oldVal.wrapping_add(self.regA as u16).wrapping_add(self.flags.carry as u16);
 
@@ -404,7 +401,7 @@ impl<'a> Cpu<'a> {
             self.setZNFlag(self.regA);
         }
         else {
-           let mut val = self.readMem8(target.unwrap());
+            let mut val = self.readMem8(target.unwrap());
 
             // set the carry flag to the value's MSB
             self.flags.carry = (val >> 7) & 1;
@@ -450,7 +447,7 @@ impl<'a> Cpu<'a> {
     fn bit(&mut self, target: Option<u16>) -> () {
         let val = self.readMem8(target.unwrap());
 
-        self.flags.zero = if self.regA & val == 0 {1} else {0};
+        self.flags.zero = if self.regA & val == 0 { 1 } else { 0 };
         self.flags.overflow = (val >> 6) & 1;
         self.flags.negative = (val >> 7) & 1;
     }
@@ -577,7 +574,7 @@ impl<'a> Cpu<'a> {
     }
 
     fn eor(&mut self, target: Option<u16>) -> () {
-		let address = target.unwrap();
+        let address = target.unwrap();
         self.regA ^= self.readMem8(address);
         self.setZNFlag(self.regA);
     }
@@ -649,7 +646,8 @@ impl<'a> Cpu<'a> {
 
             self.regA >>= 1;
             self.setZNFlag(self.regA);
-        } else {
+        }
+        else {
             let mut val = self.readMem8(target.unwrap());
 
             // set the carry flag to the value's LSB
@@ -892,7 +890,7 @@ impl<'a> Cpu<'a> {
                 );
                 let target = ((hi as u16) << 8) | (lo as u16);
 
-                return (Some(target), 3, false, false)
+                return (Some(target), 3, false, false);
             }
             AddressMode::IndirectIndexed => {
                 let zpgAddr = self.readMem8(oper);
@@ -906,7 +904,7 @@ impl<'a> Cpu<'a> {
                 }
                 let target = storedAddr.wrapping_add(self.regY as u16);
 
-                return(Some(target), 2, self.pcShouldIncrement(*opCode), (storedAddr & 0x00FF) > (target & 0x00FF));
+                return (Some(target), 2, self.pcShouldIncrement(*opCode), (storedAddr & 0x00FF) > (target & 0x00FF));
             }
             AddressMode::IndexedIndirect => {
                 let zpgAddr = self.readMem8(oper).wrapping_add(self.regX);
@@ -965,14 +963,14 @@ impl<'a> Cpu<'a> {
     #[inline]
     fn branchIncrement(&self, ref opCode: OpMnemonic) -> bool {
         match *opCode {
-            OpMnemonic::BCC => { self.flags.carry == 0 },
-            OpMnemonic::BCS => { self.flags.carry == 1 },
-            OpMnemonic::BEQ => { self.flags.zero == 1 },
-            OpMnemonic::BNE => { self.flags.zero == 0 },
-            OpMnemonic::BMI => { self.flags.negative == 1 },
-            OpMnemonic::BPL => { self.flags.negative == 0 },
-            OpMnemonic::BVS => { self.flags.overflow == 1 },
-            OpMnemonic::BVC => { self.flags.overflow == 0 },
+            OpMnemonic::BCC => { self.flags.carry == 0 }
+            OpMnemonic::BCS => { self.flags.carry == 1 }
+            OpMnemonic::BEQ => { self.flags.zero == 1 }
+            OpMnemonic::BNE => { self.flags.zero == 0 }
+            OpMnemonic::BMI => { self.flags.negative == 1 }
+            OpMnemonic::BPL => { self.flags.negative == 0 }
+            OpMnemonic::BVS => { self.flags.overflow == 1 }
+            OpMnemonic::BVC => { self.flags.overflow == 0 }
             _ => false
         }
     }
@@ -994,7 +992,7 @@ impl<'a> Cpu<'a> {
         // have to OAM DMA transfer here to prevent violation of borrowing rules
         // TODO: FIX THIS
         match *addr {
-            0x4014  => { self.triggerOamTransfer((value as u16) << 8); },
+            0x4014 => { self.triggerOamTransfer((value as u16) << 8); }
             _ => { self.memory.borrow_mut().writeCpuMem(*addr, value); }
         }
     }
@@ -1055,14 +1053,14 @@ impl<'a> Cpu<'a> {
 
     #[inline]
     fn setFlags(&mut self, status: u8) -> () {
-        self.flags.carry =      (status >> CARRY_POS) & 1;
-        self.flags.zero =       (status >> ZERO_POS) & 1;
-        self.flags.interrupt =  (status >> INT_POS) & 1;
-        self.flags.decimal =    (status >> DEC_POS) & 1;
-        self.flags.brk =        (status >> BRK_POS) & 1;
-        self.flags.unused =     1;
-        self.flags.overflow =   (status >> OVER_POS) & 1;
-        self.flags.negative =   (status >> NEG_POS) & 1;
+        self.flags.carry = (status >> CARRY_POS) & 1;
+        self.flags.zero = (status >> ZERO_POS) & 1;
+        self.flags.interrupt = (status >> INT_POS) & 1;
+        self.flags.decimal = (status >> DEC_POS) & 1;
+        self.flags.brk = (status >> BRK_POS) & 1;
+        self.flags.unused = 1;
+        self.flags.overflow = (status >> OVER_POS) & 1;
+        self.flags.negative = (status >> NEG_POS) & 1;
     }
 
     #[inline]
@@ -1273,6 +1271,5 @@ mod CpuSpc {
         cpu.setNFlag(0x7F);
         assert_eq!(cpu.flags.negative, 0)
     }
-
 }
 

@@ -23,7 +23,7 @@ pub struct DataBus<'a> {
     ppu: Option<Rc<RefCell<Ppu<'a>>>>,
     apu: Option<Rc<RefCell<Apu<'a>>>>,
     cartridge: Option<Rc<RefCell<Cartridge>>>,
-    controller1: Option<Rc<RefCell<Controller>>>
+    controller1: Option<Rc<RefCell<Controller>>>,
 }
 
 impl<'a> DataBus<'a> {
@@ -34,7 +34,7 @@ impl<'a> DataBus<'a> {
             ppu: None,
             apu: None,
             cartridge: None,
-            controller1: None
+            controller1: None,
         }
     }
 
@@ -90,7 +90,7 @@ impl<'a> DataBus<'a> {
             return self.apu.as_ref().unwrap().borrow_mut().read(*addr);
         }
         else if *addr == 0x4016 {
-           return self.controller1.as_ref().unwrap().borrow_mut().getState();
+            return self.controller1.as_ref().unwrap().borrow_mut().getState();
         }
         else if *addr == 0x4017 {
             // controller two stuff goes here
@@ -143,7 +143,7 @@ impl<'a> DataBus<'a> {
             0xFFFE => 4,
             0xFFFF => 5,
             _ => panic!("Interrupt memory out of bounds: {}", *addr)
-        }
+        };
     }
 
     fn mirrorCPU(&mut self, addr: &u16) -> () {
