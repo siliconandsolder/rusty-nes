@@ -82,7 +82,7 @@ impl Mapper for Mapper1 {
                             self.ctrlReg.setValues(self.shiftReg & 0x1F);
                         }
                         1 => {
-                            if self.ctrlReg.getChrMode() == ChrMode::EightKilo {
+                            if self.ctrlReg.getChrMode() == ChrMode::FourKilo {
                                 self.chrReg.bankLo = self.shiftReg & 0x1F;
                             }
                             else {
@@ -90,12 +90,14 @@ impl Mapper for Mapper1 {
                             }
                         }
                         2 => {
-                            self.chrReg.bankHi = self.shiftReg & 0x1F;
+                            if self.ctrlReg.getChrMode() == ChrMode::FourKilo {
+                                self.chrReg.bankHi = self.shiftReg & 0x1F;
+                            }
                         }
                         3 => {
                             match self.ctrlReg.getPrgMode() {
                                 PrgMode::Switch32 => {
-                                    self.prgReg.bankHi = self.shiftReg & 0xE >> 1;
+                                    self.prgReg.bank32 = self.shiftReg & 0xE >> 1;
                                 }
                                 PrgMode::FixFirstBank => {
                                     self.prgReg.bankLo = 0;
@@ -103,7 +105,7 @@ impl Mapper for Mapper1 {
                                 }
                                 PrgMode::FixLastBank => {
                                     self.prgReg.bankLo = self.shiftReg & 0xF;
-                                    self.prgReg.bank32 = self.numPrgBanks - 1;
+                                    self.prgReg.bankHi = self.numPrgBanks - 1;
                                 }
                             }
                         }
