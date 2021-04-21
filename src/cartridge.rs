@@ -7,11 +7,11 @@ use std::mem;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::ptr::{slice_from_raw_parts, slice_from_raw_parts_mut};
-use crate::mapper::{Mapper, MIRROR};
-use crate::mapper0::Mapper0;
 use std::borrow::{BorrowMut, Borrow};
-use crate::mapper::MIRROR::*;
-use crate::mapper1::Mapper1;
+use crate::mappers::mapper0::Mapper0;
+use crate::mappers::mapper::{Mapper, MIRROR};
+use crate::mappers::mapper::MIRROR::{VERTICAL, HORIZONTAL};
+use crate::mappers::mapper_one::mapper1::Mapper1;
 
 const PRG_RAM_START: u16 = 0x6000;
 const PRG_RAM_END: u16 = 0x7FFF;

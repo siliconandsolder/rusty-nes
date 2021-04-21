@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 #![allow(warnings)]
 
-use crate::mapper::{Mapper, MIRROR};
+use crate::mappers::mapper::{MIRROR, Mapper};
 
 pub struct Mapper0 {
     numPrgBanks: u8,

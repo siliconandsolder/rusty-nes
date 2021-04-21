@@ -4,7 +4,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 use crate::cartridge::Cartridge;
-use crate::mapper::MIRROR;
+use crate::mappers::mapper::MIRROR;
 
 pub struct PpuBus {
     tblPalette: Vec<u8>,

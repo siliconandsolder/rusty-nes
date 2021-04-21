@@ -8,7 +8,7 @@ use log::info;
 use crate::cpu::*;
 use crate::ppu::*;
 use crate::cartridge::*;
-use crate::mapper::MIRROR::*;
+use crate::mappers::mapper::MIRROR::*;
 use crate::palette::*;
 use crate::controller::Controller;
 use crate::clock::Clocked;

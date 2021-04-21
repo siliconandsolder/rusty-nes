@@ -9,7 +9,5 @@ pub mod cpu;
 pub mod ppu;
 pub mod apu;
 pub mod cartridge;
-pub mod mapper;
-pub mod mapper0;
-pub mod mapper1;
+pub mod mappers;
 pub mod console;
