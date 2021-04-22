@@ -68,11 +68,13 @@ impl Cartridge {
         let mapperId = (header.mapper2 & 0b11110000) | (header.mapper1 >> 4);
 
 
-        let fileType: u8 = 1;
         let mut numPrgBanks: u8 = 0;
         let mut numChrBanks: u8 = 0;
         let mut prgMem: Vec<u8> = vec![0];
         let mut chrMem: Vec<u8> = vec![0];
+
+        let mut fileType: u8 = 1;
+        //if header.mapper2 & 0xC == 0x8 { fileType = 2; }
 
         match fileType {
             0 => {}
@@ -83,12 +85,26 @@ impl Cartridge {
                 prgMem.resize(numPrgBanks as usize * 16384, 0);
                 for i in 0..prgMem.len() { prgMem[i] = *fIter.next().unwrap(); }
 
-                chrMem.resize(numChrBanks as usize * 8192, 0);
-                for i in 0..chrMem.len() { chrMem[i] = *fIter.next().unwrap(); }
+                if numChrBanks == 0 {
+                    chrMem.resize(8192, 0);
+                }
+                else {
+                    chrMem.resize(numChrBanks as usize * 8192, 0);
+                }
+
+                let mut idx: usize = 0;
+                while let Some(el) = fIter.next() {
+                    chrMem[idx] = *el;
+                }
+
+                // for i in 0..chrMem.len() {
+                //
+                //     chrMem[i] = *fIter.next().unwrap();
+                // }
             }
-            2 => {}
-            3 => {}
-            4 => {}
+            2 => {
+
+            }
             _ => panic!("Unknown file type: {}", fileType)
         }
 

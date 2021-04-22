@@ -124,7 +124,7 @@ impl Mapper for Mapper1 {
     fn ppuMapRead(&mut self, ref addr: u16) -> Option<u32> {
         if *addr < 0x2000 {
             if self.numChrBanks == 0 {
-                return Some(self.vChrRam[*addr as usize] as u32);
+                return Some(*addr as u32);
             }
 
 
