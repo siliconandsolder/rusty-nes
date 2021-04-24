@@ -18,4 +18,4 @@ portaudio = "0.7.0"
 [dependencies.sdl2]
 version = "0.34.0"
 default-features = false
-features = ["gfx"]
+features = ["gfx", "image"]

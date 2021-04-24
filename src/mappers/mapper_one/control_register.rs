@@ -23,9 +23,9 @@ pub struct ControlRegister {
 }
 
 impl ControlRegister {
-    pub fn new() -> Self {
+    pub fn new(initMirrorType: MIRROR) -> Self {
         ControlRegister {
-            mirrorMode: MIRROR::ONESCREEN_LO,
+            mirrorMode: initMirrorType,
             prgMode: PrgMode::FixLastBank,
             chrMode: ChrMode::EightKilo
         }

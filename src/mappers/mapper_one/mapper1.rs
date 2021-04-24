@@ -15,21 +15,19 @@ pub struct Mapper1 {
     prgReg: PrgRegister,
     numPrgBanks: u8,
     numChrBanks: u8,
-    vPrgRam: Vec<u8>,
-    vChrRam: Vec<u8>,
+    vPrgRam: Vec<u8>
 }
 
 impl Mapper1 {
-    pub fn new(numPrgBanks: u8, numChrBanks: u8) -> Self {
+    pub fn new(numPrgBanks: u8, numChrBanks: u8, mirrorType: MIRROR) -> Self {
         Mapper1 {
             shiftReg: 0x10,
-            ctrlReg: ControlRegister::new(),
+            ctrlReg: ControlRegister::new(mirrorType),
             chrReg: ChrRegister::new(),
             prgReg: PrgRegister::new(),
             numPrgBanks,
             numChrBanks,
-            vPrgRam: vec![0; 0x2000],
-            vChrRam: vec![0; 0x2000]
+            vPrgRam: vec![0; 0x2000]
         }
     }
 
@@ -41,23 +39,25 @@ impl Mapper1 {
 impl Mapper for Mapper1 {
     fn cpuMapRead(&mut self, ref addr: u16) -> Option<u32> {
 
-        if *addr < 0x8000 {
-            return Some(self.vPrgRam[(*addr & 0x1FFF) as usize] as u32);
+        if *addr >= 0x6000 && *addr <= 0x7FFF {
+            return Some(self.vPrgRam[(*addr & 0x1FFF) as usize] as u32)
         }
-        else {
-            return match self.ctrlReg.getPrgMode() {
+        else if *addr >= 0x8000 {
+            match self.ctrlReg.getPrgMode() {
                 PrgMode::Switch32 => {
-                    Some(self.prgReg.bank32 as u32 * 0x8000 + (*addr & 0x7FFF) as u32)
+                    return Some(self.prgReg.bank32 as u32 * 0x8000 + (*addr & 0x7FFF) as u32)
                 }
                 PrgMode::FixFirstBank | PrgMode::FixLastBank => {
                     if *addr < 0xC000 {
-                        Some(self.prgReg.bankLo as u32 * 0x4000 + (*addr & 0x3FFF) as u32)
+                        return Some(self.prgReg.bankLo as u32 * 0x4000 + (*addr & 0x3FFF) as u32)
                     } else {
-                        Some(self.prgReg.bankHi as u32 * 0x4000 + (*addr & 0x3FFF) as u32)
+                        return Some(self.prgReg.bankHi as u32 * 0x4000 + (*addr & 0x3FFF) as u32)
                     }
                 }
             }
         }
+
+        return None;
     }
 
     fn cpuMapWrite(&mut self, ref addr: u16, ref val: u8) -> Option<u32> {
@@ -116,7 +116,6 @@ impl Mapper for Mapper1 {
                 }
             }
         }
-
 
         return None;
     }

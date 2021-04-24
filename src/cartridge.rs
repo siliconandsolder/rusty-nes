@@ -16,6 +16,11 @@ use crate::mappers::mapper_one::mapper1::Mapper1;
 const PRG_RAM_START: u16 = 0x6000;
 const PRG_RAM_END: u16 = 0x7FFF;
 
+enum FileType {
+    AiNES,  // Archaic iNES
+    iNES,
+    NES2
+}
 
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
@@ -73,12 +78,15 @@ impl Cartridge {
         let mut prgMem: Vec<u8> = vec![0];
         let mut chrMem: Vec<u8> = vec![0];
 
-        let mut fileType: u8 = 1;
-        //if header.mapper2 & 0xC == 0x8 { fileType = 2; }
+        let mut fileType: FileType = FileType::AiNES;
+        if header.mapper2 & 0xC == 0x8 { fileType = FileType::NES2; }
+        if header.mapper2 & 0xC == 0x0 && !header.unused.iter().any(|el| *el != 0) { fileType = FileType::iNES; }
 
         match fileType {
-            0 => {}
-            1 => {
+            FileType::AiNES => {
+
+            }
+            FileType::iNES => {
                 numPrgBanks = header.prgSize;
                 numChrBanks = header.chrSize;
 
@@ -95,17 +103,12 @@ impl Cartridge {
                 let mut idx: usize = 0;
                 while let Some(el) = fIter.next() {
                     chrMem[idx] = *el;
+                    idx += 1;
                 }
-
-                // for i in 0..chrMem.len() {
-                //
-                //     chrMem[i] = *fIter.next().unwrap();
-                // }
             }
-            2 => {
+            FileType::NES2 => {
 
             }
-            _ => panic!("Unknown file type: {}", fileType)
         }
 
         let mut mapper: Option<Box<dyn Mapper>> = None;
@@ -113,7 +116,7 @@ impl Cartridge {
 
         match mapperId {
             0 => { mapper = Some(Box::new(Mapper0::new(numPrgBanks, numChrBanks, mirror))) }
-            1 => { mapper = Some(Box::new(Mapper1::new(numPrgBanks, numChrBanks))) }
+            1 => { mapper = Some(Box::new(Mapper1::new(numPrgBanks, numChrBanks, mirror))) }
             _ => panic!("Unknown mapper: {}", mapperId)
         }
 
