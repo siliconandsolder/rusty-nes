@@ -24,7 +24,7 @@ impl Mapper1 {
             shiftReg: 0x10,
             ctrlReg: ControlRegister::new(mirrorType),
             chrReg: ChrRegister::new(),
-            prgReg: PrgRegister::new(),
+            prgReg: PrgRegister::new(numPrgBanks),
             numPrgBanks,
             numChrBanks,
             vPrgRam: vec![0; 0x2000]
@@ -40,18 +40,18 @@ impl Mapper for Mapper1 {
     fn cpuMapRead(&mut self, ref addr: u16) -> Option<u32> {
 
         if *addr >= 0x6000 && *addr <= 0x7FFF {
-            return Some(self.vPrgRam[(*addr & 0x1FFF) as usize] as u32)
+            return Some(self.vPrgRam[(*addr & 0x1FFF) as usize] as u32);
         }
         else if *addr >= 0x8000 {
             match self.ctrlReg.getPrgMode() {
                 PrgMode::Switch32 => {
-                    return Some(self.prgReg.bank32 as u32 * 0x8000 + (*addr & 0x7FFF) as u32)
+                    return Some(self.prgReg.bank32 as u32 * 0x8000 + (*addr & 0x7FFF) as u32);
                 }
                 PrgMode::FixFirstBank | PrgMode::FixLastBank => {
-                    if *addr < 0xC000 {
-                        return Some(self.prgReg.bankLo as u32 * 0x4000 + (*addr & 0x3FFF) as u32)
+                    return if *addr < 0xC000 {
+                        Some(self.prgReg.bankLo as u32 * 0x4000 + (*addr & 0x3FFF) as u32)
                     } else {
-                        return Some(self.prgReg.bankHi as u32 * 0x4000 + (*addr & 0x3FFF) as u32)
+                        Some(self.prgReg.bankHi as u32 * 0x4000 + (*addr & 0x3FFF) as u32)
                     }
                 }
             }
@@ -68,6 +68,7 @@ impl Mapper for Mapper1 {
         else if *addr >= 0x8000 {
             if val & 0x80 == 0x80 {
                 self.shiftReg = 0x10;
+                self.ctrlReg.reset();
             }
             else {
                 let complete: bool = (self.shiftReg & 1) == 1;

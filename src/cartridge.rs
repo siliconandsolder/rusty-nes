@@ -90,14 +90,14 @@ impl Cartridge {
                 numPrgBanks = header.prgSize;
                 numChrBanks = header.chrSize;
 
-                prgMem.resize(numPrgBanks as usize * 16384, 0);
+                prgMem.resize(numPrgBanks as usize * 0x4000, 0);
                 for i in 0..prgMem.len() { prgMem[i] = *fIter.next().unwrap(); }
 
                 if numChrBanks == 0 {
                     chrMem.resize(8192, 0);
                 }
                 else {
-                    chrMem.resize(numChrBanks as usize * 8192, 0);
+                    chrMem.resize(numChrBanks as usize * 0x2000, 0);
                 }
 
                 let mut idx: usize = 0;

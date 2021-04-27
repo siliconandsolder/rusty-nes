@@ -41,10 +41,10 @@ impl Flags {
         Flags {
             carry: 0,
             zero: 0,
-            interrupt: 0,
+            interrupt: 1,
             decimal: 0,
             brk: 0,
-            unused: 0,
+            unused: 1,
             overflow: 0,
             negative: 0,
         }
@@ -156,7 +156,7 @@ impl<'a> Cpu<'a> {
         // load reset vector into program counter
         let lo = memory.borrow().readCpuMem(0xFFFC);
         let hi = memory.borrow().readCpuMem(0xFFFD);
-        let prgC = ((hi as u16) << 8) + (lo as u16);
+        let prgC = ((hi as u16) << 8) | (lo as u16);
 
 
         let mut cpu = Cpu {

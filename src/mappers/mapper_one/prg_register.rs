@@ -8,10 +8,10 @@ pub struct PrgRegister {
 }
 
 impl PrgRegister {
-    pub fn new() -> Self {
+    pub fn new(numBanks: u8) -> Self {
         PrgRegister {
             bankLo: 0,
-            bankHi: 0,
+            bankHi: numBanks - 1,
             bank32: 0
         }
     }

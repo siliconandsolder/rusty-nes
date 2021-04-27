@@ -20,6 +20,7 @@ pub struct ControlRegister {
     mirrorMode: MIRROR,
     prgMode: PrgMode,
     chrMode: ChrMode,
+    registerValue: u8
 }
 
 impl ControlRegister {
@@ -27,11 +28,13 @@ impl ControlRegister {
         ControlRegister {
             mirrorMode: initMirrorType,
             prgMode: PrgMode::FixLastBank,
-            chrMode: ChrMode::EightKilo
+            chrMode: ChrMode::EightKilo,
+            registerValue: 0x0C
         }
     }
 
     pub fn setValues(&mut self, regVal: u8) {
+        self.registerValue = regVal;
         match regVal & 3 {
             0 => {
                 self.mirrorMode = MIRROR::ONESCREEN_LO;
@@ -67,6 +70,10 @@ impl ControlRegister {
         else {
             self.chrMode = ChrMode::EightKilo;
         }
+    }
+
+    pub fn reset(&mut self) -> () {
+        self.setValues(self.registerValue | 0x0C);
     }
 
     pub fn getMirrorMode(&self) -> MIRROR {
