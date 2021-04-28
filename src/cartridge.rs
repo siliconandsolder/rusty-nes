@@ -95,7 +95,7 @@ impl Cartridge {
                 for i in 0..prgMem.len() { prgMem[i] = *fIter.next().unwrap(); }
 
                 if numChrBanks == 0 {
-                    chrMem.resize(8192, 0);
+                    chrMem.resize(0x2000, 0);
                 }
                 else {
                     chrMem.resize(numChrBanks as usize * 0x2000, 0);
