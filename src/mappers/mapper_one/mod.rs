@@ -6,7 +6,6 @@ pub mod control_register;
 pub mod prg_register;
 pub mod chr_register;
 
-use sdl2::gfx::imagefilter::add;
 use crate::mappers::mapper::{Mapper, MIRROR};
 use crate::mappers::mapper_one::control_register::{ControlRegister, PrgMode, ChrMode};
 use crate::mappers::mapper_one::chr_register::ChrRegister;
