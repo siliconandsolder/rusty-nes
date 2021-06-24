@@ -341,7 +341,7 @@ impl<'a> Clocked for Ppu<'a> {
                                 row = 15 - row;
                             }
 
-                            let flagTile: u16 = (self.fSprTile & 1) as u16;
+                            let flagTile: u16 = (sprTile & 1) as u16;
                             sprTile &= 0xFE;
                             if row > 7 {
                                 sprTile += 1;
