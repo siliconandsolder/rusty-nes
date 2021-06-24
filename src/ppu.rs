@@ -129,7 +129,7 @@ pub struct Ppu<'a> {
     // PPUCTRL
     fNameTable: u8,
     fIncMode: u8,
-    fSprTile: u8,
+    fSprTable: u8,
     fBckTile: u8,
     fSprHeight: u8,
     fMaster: u8,
@@ -321,33 +321,32 @@ impl<'a> Clocked for Ppu<'a> {
                         let mut sprPatBitsLo: u8 = 0;
                         let mut sprPatBitsHi: u8 = 0;
 
-                        let sprY = self.vSpriteLine[(i * 4) as usize].clone() as u16;
                         let mut sprTile = self.vSpriteLine[(i * 4 + 1) as usize].clone() as u16;
                         let sprAttr = self.vSpriteLine[(i * 4 + 2) as usize].clone() as u16;
-                        let mut row = self.scanLine as i32 - sprY as i32;
+                        let mut scanY = self.scanLine as i32 - self.vSpriteLine[(i * 4) as usize].clone() as i32;
 
                         let mut sprAddress: u16 = 0;
 
                         if self.fSprHeight == 0 {
                             // sprite flipped vertically
-                            if sprAttr & 0x80 == 0x80 {
-                                row = 7 - row;
-                            }
-                            sprAddress = ((self.fSprTile as u16) << 12) + (sprTile << 4) + row as u16;
+
+                            scanY = if sprAttr & 0x80 == 0x80 { 7 - scanY } else { scanY };
+
+                            sprAddress = ((self.fSprTable as u16) << 12) | (sprTile << 4) | scanY as u16 & 7;
                         }
                         else {
+                            let table: u16 = (sprTile & 1) as u16;
+                            sprTile &= 0xFE;
+
                             // sprite flipped vertically
-                            if sprAttr & 0x80 == 0x80 {
-                                row = 15 - row;
+                            scanY = if sprAttr & 0x80 == 0x80 { 15 - scanY } else { scanY };
+
+                            if scanY > 7 {
+                                sprTile += 1;
+                                scanY -= 8;
                             }
 
-                            let flagTile: u16 = (sprTile & 1) as u16;
-                            sprTile &= 0xFE;
-                            if row > 7 {
-                                sprTile += 1;
-                                row -= 8;
-                            }
-                            sprAddress = (flagTile << 12) + (sprTile << 4) + row as u16;
+                            sprAddress = (table << 12) | (sprTile << 4) | scanY as u16 & 7;
                         }
 
                         // sprPatAddrHi = sprPatAddrLo + 8;
@@ -516,7 +515,7 @@ impl<'a> Ppu<'a> {
             isZeroBeingRendered: false,
             fNameTable: 0,
             fIncMode: 0,
-            fSprTile: 0,
+            fSprTable: 0,
             fBckTile: 0,
             fSprHeight: 0,
             fMaster: 0,
@@ -574,7 +573,7 @@ impl<'a> Ppu<'a> {
     fn ppuCtrl(&mut self, val: u8) -> () {
         self.fNameTable = val & 3;
         self.fIncMode = (val >> 2) & 1;
-        self.fSprTile = (val >> 3) & 1;
+        self.fSprTable = (val >> 3) & 1;
         self.fBckTile = (val >> 4) & 1;
         self.fSprHeight = (val >> 5) & 1;
         self.fMaster = (val >> 6) & 1;
