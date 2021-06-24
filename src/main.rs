@@ -5,7 +5,7 @@ use std::fs::File;
 
 fn main() {
     // TODO: Fix SHY, SHX
-    let path = Path::new("./contra.nes");
+    let path = Path::new("./castlevania.nes");
     let mut console = Console::new(path);
     console.cycle();
 }

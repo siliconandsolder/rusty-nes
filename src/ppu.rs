@@ -271,11 +271,9 @@ impl<'a> Clocked for Ppu<'a> {
                 257 => {
                     self.loadBackgroundShiftRegisters();
                     // copy nametable x and coarse x
-                    //info!("vAddr before X-transfer: {}\n", self.v);
                     if renderLine || preLine {
                         self.v = (self.v & 0xFBE0) | (self.t & 0x041F);
                     }
-                    //info!("vAddr after X-transfer: {}\n", self.v);
 
                     if !preLine {
                         for i in &mut self.vSpriteLine { *i = 0; }
@@ -289,18 +287,16 @@ impl<'a> Clocked for Ppu<'a> {
 
                             let mut diff: i16 = self.scanLine as i16 - oamY as i16;
                             // the sprite will be rendered on the next scanline!
-                            if diff > -1 && diff < spriteSize as i16 {
+                            if diff > -1 && diff < spriteSize as i16 && self.spriteLineCount < 8 {
                                 // copy oam entry into scanline vector
                                 // increment sprite count
-                                if self.spriteLineCount < 8 {
-                                    if oamIdx == 0 { self.isZeroHitPossible = true; }
+                                if oamIdx == 0 { self.isZeroHitPossible = true; }
 
-                                    for i in 0..=3 {
-                                        self.vSpriteLine[(self.spriteLineCount * 4 + i) as usize] = self.ppuBus.readOam(oamIdx * 4 + i)
-                                    }
-                                    self.spriteLineCount += 1;
+                                for i in 0..=3 {
+                                    self.vSpriteLine[(self.spriteLineCount * 4 + i) as usize] = self.ppuBus.readOam(oamIdx * 4 + i)
                                 }
-                            }
+                                self.spriteLineCount += 1;
+                           }
                             oamIdx += 1;
                         }
                         if self.spriteLineCount >= 8 {
@@ -337,7 +333,7 @@ impl<'a> Clocked for Ppu<'a> {
                             if sprAttr & 0x80 == 0x80 {
                                 row = 7 - row;
                             }
-                            sprAddress = ((self.fSprTile as u16) << 12) | (sprTile << 4) | row as u16;
+                            sprAddress = ((self.fSprTile as u16) << 12) + (sprTile << 4) + row as u16;
                         }
                         else {
                             // sprite flipped vertically
@@ -351,7 +347,7 @@ impl<'a> Clocked for Ppu<'a> {
                                 sprTile += 1;
                                 row -= 8;
                             }
-                            sprAddress = (flagTile << 12) | (sprTile << 4) | row as u16;
+                            sprAddress = (flagTile << 12) + (sprTile << 4) + row as u16;
                         }
 
                         // sprPatAddrHi = sprPatAddrLo + 8;
@@ -360,15 +356,15 @@ impl<'a> Clocked for Ppu<'a> {
 
                         // flip sprite horizontally
                         if sprAttr & 0x40 == 0x40 {
-                            let horizontalFlipper = |mut byte: u8| -> u8 {
-                                byte = (byte & 0xF0) >> 4 | (byte & 0x0F) << 4;
-                                byte = (byte & 0xCC) >> 2 | (byte & 0x33) << 2;
-                                byte = (byte & 0xAA) >> 1 | (byte & 0x55) << 1;
-                                byte
-                            };
-
-                            sprPatBitsHi = horizontalFlipper(sprPatBitsHi);
-                            sprPatBitsLo = horizontalFlipper(sprPatBitsLo);
+                            // let horizontalFlipper = |mut byte: u8| -> u8 {
+                            //     byte = (byte & 0xF0) >> 4 | (byte & 0x0F) << 4;
+                            //     byte = (byte & 0xCC) >> 2 | (byte & 0x33) << 2;
+                            //     byte = (byte & 0xAA) >> 1 | (byte & 0x55) << 1;
+                            //     byte
+                            // };
+                            //
+                             sprPatBitsHi = self.horizontalFlipper(sprPatBitsHi);
+                             sprPatBitsLo = self.horizontalFlipper(sprPatBitsLo);
                         }
 
                         // finally load the bits into the shift registers
@@ -419,56 +415,45 @@ impl<'a> Clocked for Ppu<'a> {
         let mut pixel: u8 = 0;
         let mut palette: u8 = 0;
 
-        match bgPixel {
-            0 => {
-                match sprPixel {
-                    0 => {}
-                    _ => {
-                        pixel = sprPixel;
-                        palette = sprPallete;
-                    }
-                }
-            }
-            _ => {
-                match sprPixel {
-                    0 => {
-                        pixel = bgPixel;
-                        palette = bgPallete;
-                    }
-                    _ => {
-                        match sprPriority {
-                            0 => {
-                                pixel = bgPixel;
-                                palette = bgPallete;
-                            }
-                            _ => {
-                                pixel = sprPixel;
-                                palette = sprPallete;
-                            }
-                        }
-
-                        // if we're rendering sprite zero, and both the background and sprites,
-                        // we can have a zero hit
-                        if self.isZeroBeingRendered && self.isZeroHitPossible
-                            && self.fBckEnabled == 1 && self.fSprEnabled == 1 {
-
-                            // we're not rendering the left-most 8 pixels, so
-                            // only generate a hit after the first 8 pixels
-                            if (self.fBckLeft | self.fSprLeft) == 0 {
-                                if self.cycle > 8 && self.cycle < 258 {
-                                    self.fSprZero = 1;
-                                }
-                            }
-                            else {
-                                if self.cycle > 0 && self.cycle < 258 {
-                                    self.fSprZero = 1;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+        if bgPixel == 0 && sprPixel != 0 {
+            pixel = sprPixel;
+            palette = sprPallete;
         }
+        else if bgPixel != 0 && sprPixel == 0 {
+            pixel = bgPixel;
+            palette = bgPallete;
+        }
+        else if bgPixel != 0 && sprPixel != 0 {
+            if sprPriority != 0 {
+                pixel = sprPixel;
+                palette = sprPallete;
+            }
+            else {
+                pixel = bgPixel;
+                palette = bgPallete;
+            }
+
+            // if we're rendering sprite zero, and both the background and sprites,
+            // we can have a zero hit
+            if self.isZeroBeingRendered && self.isZeroHitPossible
+                && self.fBckEnabled == 1 && self.fSprEnabled == 1 {
+
+                // we're not rendering the left-most 8 pixels, so
+                // only generate a hit after the first 8 pixels
+                if (self.fBckLeft | self.fSprLeft) == 0 {
+                    if self.cycle > 8 && self.cycle < 258 {
+                        self.fSprZero = 1;
+                    }
+                }
+                else {
+                    if self.cycle > 0 && self.cycle < 258 {
+                        self.fSprZero = 1;
+                    }
+                }
+            }
+
+        }
+
 
         // call draw function here
         if renderEnabled && renderLine && renderCycle {
@@ -478,7 +463,7 @@ impl<'a> Clocked for Ppu<'a> {
 
         // increment cycle and scanline
         self.cycle += 1;
-        if self.cycle == CYCLE_MAX + 1 {
+        if self.cycle > CYCLE_MAX {
             self.cycle = 0;
 
             self.scanLine += 1;
@@ -780,5 +765,12 @@ impl<'a> Ppu<'a> {
         self.canvas.borrow_mut().clear();
         self.canvas.borrow_mut().copy(self.textureManager.getTextureRef(), None, None).unwrap();
         self.canvas.borrow_mut().present();
+    }
+
+    fn horizontalFlipper(&self, mut byte: u8) -> u8 {
+        byte = (byte & 0xF0) >> 4 | (byte & 0x0F) << 4;
+        byte = (byte & 0xCC) >> 2 | (byte & 0x33) << 2;
+        byte = (byte & 0xAA) >> 1 | (byte & 0x55) << 1;
+        return byte;
     }
 }

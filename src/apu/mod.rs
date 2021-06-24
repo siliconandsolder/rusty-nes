@@ -306,14 +306,6 @@ impl<'a> Apu<'a> {
                 (self.dmc.output()) as usize
             ];
 
-        // let pulseOut = 95.88 / (100.0
-        // 	+ (8128.0 / (  self.pulse1.output() as f32
-        // 	+ self.pulse2.output() as f32)));
-        // let tndOut = 159.79 / (100.0
-        // 	+ (1.0 / (  (self.triangle.output() as f32 / 8227.0)
-        // 	+ (self.noise.output() as f32 / 12241.0)
-        // 	+ (self.dmc.output() as f32 / 22638.0))));
-
         self.audio.pushSample(pulseOut + tndOut);
     }
 
