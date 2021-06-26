@@ -6,18 +6,18 @@ use flume::{Sender, Receiver, TryRecvError};
 
 use portaudio::*;
 use portaudio::stream::CallbackResult;
-use sdl2::audio::{AudioQueue, AudioSpecDesired};
+use sdl2::audio::{AudioQueue, AudioSpecDesired, AudioDevice};
 use sdl2::AudioSubsystem;
 use crate::apu::filter::Filter;
 use std::borrow::Borrow;
+use crate::apu::callback::Callback;
 
 const AUDIO_HERTZ: u16 = 44100;
 const BUFFER_SIZE: usize = 512;
 
 pub struct Audio {
-    queue: AudioQueue<f32>,
-    buffer: Vec<f32>,
-    bufferIdx: usize,
+    tx: Sender<f32>,
+    playback: AudioDevice<Callback>,
 
     // filters
     highPassFilter1: Filter,
@@ -34,13 +34,19 @@ impl Audio {
             samples: Some(BUFFER_SIZE as u16)
         };
 
-        let queue = audioSystem.open_queue::<f32, _>(None, &specs).unwrap();
-        queue.resume();
+        let (tx, rx) = flume::unbounded();
+
+        let playback: AudioDevice<Callback> = audioSystem.open_playback(None, &specs, |spec| {
+            // you can't use a new() function to create the callback for some reason
+            Callback {
+                rx
+            }
+        }).unwrap();
+        playback.resume();
 
         Audio {
-            queue,
-            buffer: vec![0.0; BUFFER_SIZE],
-            bufferIdx: 0,
+            tx,
+            playback,
             highPassFilter1: Filter::HighPassFilter(AUDIO_HERTZ as f32, 90 as f32),
             highPassFilter2: Filter::HighPassFilter(AUDIO_HERTZ as f32, 440 as f32),
             lowPassFilter: Filter::LowPassFilter(AUDIO_HERTZ as f32, 14000 as f32),
@@ -49,13 +55,14 @@ impl Audio {
 
     pub fn pushSample(&mut self, sample: f32) -> () {
         let filteredSample = self.filterSample(sample);
-        self.buffer[self.bufferIdx] = filteredSample;
-        self.bufferIdx += 1;
-
-        if self.bufferIdx == BUFFER_SIZE {
-            self.queue.queue(self.buffer.as_slice());
-            self.bufferIdx = 0;
-        }
+        self.tx.send(filteredSample);
+        // self.buffer[self.bufferIdx] = filteredSample;
+        // self.bufferIdx += 1;
+        //
+        // if self.bufferIdx == BUFFER_SIZE {
+        //     self.queue.queue(self.buffer.as_slice());
+        //     self.bufferIdx = 0;
+        // }
     }
 
     fn filterSample(&mut self, sample: f32) -> f32 {
@@ -66,9 +73,8 @@ impl Audio {
     }
 }
 
-impl Drop for Audio {
-    fn drop(&mut self) {
-        self.queue.pause();
-        self.queue.clear();
-    }
-}
+// impl Drop for Audio {
+//     fn drop(&mut self) {
+//         self.playback.close_and_get_callback();
+//     }
+// }

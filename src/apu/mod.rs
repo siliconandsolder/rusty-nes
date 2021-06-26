@@ -28,6 +28,7 @@ pub mod triangle;
 pub mod noise;
 pub mod dmc;
 pub mod audio;
+pub mod callback;
 
 
 /*
