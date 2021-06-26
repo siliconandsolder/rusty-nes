@@ -4,12 +4,9 @@
 
 use flume::{Sender, Receiver, TryRecvError};
 
-use portaudio::*;
-use portaudio::stream::CallbackResult;
 use sdl2::audio::{AudioQueue, AudioSpecDesired, AudioDevice};
 use sdl2::AudioSubsystem;
 use crate::apu::filter::Filter;
-use std::borrow::Borrow;
 use crate::apu::callback::Callback;
 
 const AUDIO_HERTZ: u16 = 44100;
