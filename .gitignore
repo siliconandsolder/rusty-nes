@@ -1,4 +1,8 @@
 /target
+/tests
 **/*.rs.bk
+*.nes
+*.jpg
+*.png
 
 Cargo.lock
