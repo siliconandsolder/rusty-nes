@@ -51,6 +51,7 @@ impl<'a> Console<'a> {
         let sdl = sdl2::init().unwrap();
 
         let vid = sdl.video().unwrap();
+        let audioSystem = sdl.audio().unwrap();
         let imageContext = sdl2::image::init(InitFlag::PNG | InitFlag::JPG).unwrap();
 
         let window = vid
@@ -92,7 +93,7 @@ impl<'a> Console<'a> {
         bus.borrow_mut().attachCartridge(cartridge.clone());
         let cpu = Rc::new(RefCell::new(Cpu::new(bus.clone())));
         bus.borrow_mut().attachCpu(cpu.clone());
-        let apu = Rc::new(RefCell::new(Apu::new(bus.clone())));
+        let apu = Rc::new(RefCell::new(Apu::new(bus.clone(), audioSystem)));
         bus.borrow_mut().attachApu(apu.clone());
         let ppuBus = PpuBus::new(cartridge.clone());
         let ppu = Rc::new(RefCell::new(Ppu::new(bus.clone(), Rc::new(RefCell::new(canvas)), ppuBus)));

@@ -19,6 +19,7 @@ use crate::apu::pulse::Pulse;
 use crate::apu::triangle::Triangle;
 use crate::apu::dmc::DMC;
 use utils::*;
+use sdl2::AudioSubsystem;
 
 pub mod utils;
 pub mod filter;
@@ -56,7 +57,7 @@ pub struct Apu<'a> {
 }
 
 impl<'a> Apu<'a> {
-    pub fn new(dataBus: Rc<RefCell<DataBus<'a>>>) -> Self {
+    pub fn new(dataBus: Rc<RefCell<DataBus<'a>>>, audioSystem: AudioSubsystem) -> Self {
         /*
         table:  .byte 10, 254, 20,  2, 40,  4, 80,  6
     .byte 160,  8, 60, 10, 14, 12, 26, 14
@@ -92,7 +93,7 @@ impl<'a> Apu<'a> {
             fiveStep: false,
             frameInterrupt: false,
             inhibitInterrupt: false,
-            audio: Audio::new(),
+            audio: Audio::new(audioSystem),
             lengthTable: Vec::from(lengthTable),
             pulseTable: pulseTable,
             tndTable: tndTable,
