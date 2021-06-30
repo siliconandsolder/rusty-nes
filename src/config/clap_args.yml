@@ -1,0 +1,10 @@
+name: rustynes
+version: "0.1"
+author: Ben Godin <bgodin1995@gmail.com>
+about: "This is a simple NES emulator written in Rust"
+args:
+  - ROM:
+      short: r
+      long: rom
+      help: path to the rom you want to play
+      takes_value: true

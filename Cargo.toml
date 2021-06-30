@@ -1,5 +1,5 @@
 [package]
-name = "nes"
+name = "rustynes"
 version = "0.1.0"
 authors = ["Ben Godin <ben.godin@hotmail.ca>"]
 edition = "2018"
@@ -13,8 +13,5 @@ log = "0.4.8"
 flume = "0.10.1"
 ndarray = "0.14.0"
 lazy_static = "1.4.0"
-
-[dependencies.sdl2]
-version = "0.34.0"
-default-features = false
-features = ["gfx", "image"]
+clap = {version = "2.33.3", features = ["yaml"]}
+sdl2 = {version = "0.34.0", default-features = false, features = ["gfx", "image"]}
