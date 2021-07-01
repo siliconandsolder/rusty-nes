@@ -4,5 +4,7 @@
 *.nes
 *.jpg
 *.png
+!/src/resources/*.png
+!/src/resources/*.jpg
 
 Cargo.lock
