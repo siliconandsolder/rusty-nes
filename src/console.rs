@@ -26,6 +26,7 @@ use self::sdl2::mouse::SystemCursor::No;
 use std::process::exit;
 use self::sdl2::event::Event;
 use self::sdl2::keyboard::Keycode;
+use self::sdl2::render::{Canvas, WindowCanvas};
 
 const MASTER_CLOCK_NANO: u8 = 47;
 // should be about 46.56, but the std::thread functions don't allow decimals
@@ -45,18 +46,16 @@ pub struct Console<'a> {
 }
 
 impl<'a> Console<'a> {
-    pub fn new(game: &Path) -> Self {
+    pub fn new(game: Option<&str>) -> Self {
 
         // sdl setup
         let sdl = sdl2::init().unwrap();
 
         let vid = sdl.video().unwrap();
         let audioSystem = sdl.audio().unwrap();
-        let imageContext = sdl2::image::init(InitFlag::PNG | InitFlag::JPG).unwrap();
 
         let window = vid
             .window("RustyNES", 768, 720)
-            .resizable()
             .position_centered()
             .opengl()
             .build()
@@ -64,30 +63,24 @@ impl<'a> Console<'a> {
 
         // will eventually pass this to the controller
         let eventPump = Rc::new(RefCell::new(sdl.event_pump().unwrap()));
-
         let mut canvas = window.into_canvas().software().build().unwrap();
-        //let textureCreator = canvas.texture_creator();
-        //let imgTexture = textureCreator.load_texture("./rust.jpg").unwrap();
-        //canvas.copy(&imgTexture, None, None).unwrap();
+
+        let fileName = match game {
+            None => {
+                Console::loadFileScreen(&mut canvas, eventPump.clone())
+            }
+            Some(fileName) => {
+                String::from(fileName)
+            }
+        };
+        let filePath = Path::new(fileName.as_str());
+
         canvas.clear();
         canvas.set_draw_color(Color::RGB(0, 0, 0));
         canvas.present();
 
-        // 'mainloop: loop {
-        //     for event in eventPump.borrow_mut().poll_event() {
-        //         match event {
-        //             Event::Quit { .. }
-        //             | Event::KeyDown {
-        //                 keycode: Option::Some(Keycode::Escape),
-        //                 ..
-        //             } => exit(0),
-        //             _ => {}
-        //         }
-        //     }
-        // }
-
         let controller1 = Rc::new(RefCell::new(Controller::new(eventPump)));
-        let cartridge = Rc::new(RefCell::new(Cartridge::new(game)));
+        let cartridge = Rc::new(RefCell::new(Cartridge::new(filePath)));
         let bus = Rc::new(RefCell::new(DataBus::new()));
         bus.borrow_mut().attachController1(controller1);
         bus.borrow_mut().attachCartridge(cartridge.clone());
@@ -105,6 +98,24 @@ impl<'a> Console<'a> {
             apu,
             bus,
             cartridge,
+        }
+    }
+
+    fn loadFileScreen(canvas: &mut WindowCanvas, eventPump: Rc<RefCell<EventPump>>) -> String {
+        let textureCreator = canvas.texture_creator();
+        let imgBytes = include_bytes!("./resources/rustynes_splash_screen.png");
+        let imgTexture = textureCreator.load_texture_bytes(imgBytes).unwrap();
+        canvas.copy(&imgTexture, None, None).unwrap();
+        canvas.present();
+
+        loop {
+            for event in eventPump.borrow_mut().poll_event() {
+                match event {
+                    Event::DropFile {filename, .. } => { return filename; }
+                    Event::KeyDown { keycode: Some(Keycode::Escape), .. } => { exit(0) }
+                    _ => {}
+                }
+            }
         }
     }
 }
