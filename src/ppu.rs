@@ -98,7 +98,7 @@ pub struct Ppu<'a> {
     bufData: u8,
 
     nmiOccured: bool,
-    canTrigNmi: bool,
+    forceNmi: bool,
     nmiDelay: u8,
 
     // background shift registers
@@ -204,23 +204,16 @@ impl<'a> Clocked for Ppu<'a> {
 
 
                 let vAddr = *&self.v;
-                //info!("\nCycle: {}\n", self.cycle);
                 match (self.cycle - 1) % 8 {
                     0 => {
                         self.loadBackgroundShiftRegisters();
                         self.bgTileId = self.ppuBus.readPpuMem(
                             0x2000 | (vAddr & 0x0FFF)
                         );
-                        //info!("BgTileId: {}\n", self.bgTileId);
                     }
                     2 => {
                         let bgTileAddr = 0x23C0 | (vAddr & 0x0C00) | ((vAddr >> 4) & 0x38) | ((vAddr >> 2) & 0x07);
-                        self.bgTileAttr = self.ppuBus.readPpuMem(
-                            bgTileAddr
-                        );
-
-                        //info!("BgTileAddr: {}\n", bgTileAddr);
-                        //info!("BgTileAttr: {}\n", self.bgTileAttr);
+                        self.bgTileAttr = self.ppuBus.readPpuMem(bgTileAddr);
 
                         /* vram address
                         0x0yyy YX YYYYY XXXXX
@@ -252,9 +245,7 @@ impl<'a> Clocked for Ppu<'a> {
                         );
                     }
                     7 => {
-                        //info!("vAddr before incrementX: {}\n", self.v);
                         self.incrementX();
-                        //info!("vAddr after incrementX: {}\n", self.v);
                     }
                     _ => {}
                 }
@@ -279,7 +270,7 @@ impl<'a> Clocked for Ppu<'a> {
                         for i in &mut self.vSpriteLine { *i = 0; }
                         self.spriteLineCount = 0;
                         let mut oamIdx: u8 = 0;
-                        self.isZeroBeingRendered = false;
+                        self.isZeroHitPossible = false;
 
                         while oamIdx < 64 && self.spriteLineCount < 9 {
                             let oamY: u8 = self.ppuBus.readOam(oamIdx * 4);
@@ -306,10 +297,8 @@ impl<'a> Clocked for Ppu<'a> {
                 }
                 280..=304 => {
                     if preLine {
-                        //info!("vAddr before Y-transfer: {}\n", self.v);
                         // copy fine y, nametable y, and coarse y to vram address
                         self.v = (self.v & 0x841F) | (self.t & 0x7BE0);
-                        //info!("vAddr after Y-transfer: {}\n", self.v);
                     }
                 }
                 338 => { self.bgTileId = self.ppuBus.readPpuMem(0x2000 | (*&self.v & 0x0FFF)); }
@@ -355,13 +344,6 @@ impl<'a> Clocked for Ppu<'a> {
 
                         // flip sprite horizontally
                         if sprAttr & 0x40 == 0x40 {
-                            // let horizontalFlipper = |mut byte: u8| -> u8 {
-                            //     byte = (byte & 0xF0) >> 4 | (byte & 0x0F) << 4;
-                            //     byte = (byte & 0xCC) >> 2 | (byte & 0x33) << 2;
-                            //     byte = (byte & 0xAA) >> 1 | (byte & 0x55) << 1;
-                            //     byte
-                            // };
-                            //
                              sprPatBitsHi = self.horizontalFlipper(sprPatBitsHi);
                              sprPatBitsLo = self.horizontalFlipper(sprPatBitsLo);
                         }
@@ -497,7 +479,7 @@ impl<'a> Ppu<'a> {
             oamAddr: 0,
             bufData: 0,
             nmiOccured: false,
-            canTrigNmi: false,
+            forceNmi: false,
             nmiDelay: 0,
             bgShiftPatLo: 0,
             bgShiftPatHi: 0,
@@ -571,6 +553,11 @@ impl<'a> Ppu<'a> {
     }
 
     fn ppuCtrl(&mut self, val: u8) -> () {
+
+        if self.fNmi == 0 && ((val >> 7) & 1) == 1 && self.nmiOccured {
+            self.dataBus.borrow_mut().ppuTriggerNMI();
+        }
+
         self.fNameTable = val & 3;
         self.fIncMode = (val >> 2) & 1;
         self.fSprTable = (val >> 3) & 1;
@@ -579,13 +566,7 @@ impl<'a> Ppu<'a> {
         self.fMaster = (val >> 6) & 1;
         self.fNmi = (val >> 7) & 1;
 
-        // if self.nmiDelay == 0 {
-        //     self.canTrigNmi = true;
-        // }
-
-        //info!("PPUCTRL val: {}, tAddr before PPUCTRL write: {}\n", val, self.t);
         self.t = (self.t & 0xF3FF) | (((val & 0x03) as u16) << 10);
-        //info!("PPUCTRL val: {}, tAddr after PPUCTRL write: {}\n", val, self.t);
     }
 
     fn ppuMask(&mut self, val: u8) -> () {
@@ -628,33 +609,24 @@ impl<'a> Ppu<'a> {
 
     fn ppuScroll(&mut self, val: u8) -> () {
         if self.w == 0 {
-            //info!("PPUSCROLL val: {}, tAddr before first ppuScroll write: {}\n", val, self.t);
             self.t = (self.t & 0xFFE0) | ((val as u16) >> 3);
             self.x = (val & 0x07);
             self.w = 1;
-            //info!("PPUSCROLL val: {}, tAddr after first ppuScroll write: {}\n", val, self.t);
         }
         else {
-
-            //info!("PPUSCROLL val: {}, tAddr before second ppuScroll write: {}\n", val, self.t);
             self.t = (self.t & 0x8FFF) | (((val & 0x07) as u16) << 12);
             self.t = (self.t & 0xFC1F) | (((val & 0xF8) as u16) << 2);
             self.w = 0;
-            //info!("PPUSCROLL val: {}, tAddr after second ppuScroll write: {}\n", val, self.t);
         }
     }
 
     fn ppuAddress(&mut self, val: u8) -> () {
         if self.w == 0 {
-            //info!("PPUADDR val: {}, tAddr before first ppuAddress write: {}\n", val, self.t);
             self.t = (self.t & 0x80FF) | ((val as u16 & 0x3F) << 8);
-            //info!("PPUADDR val: {}, tAddr after first ppuAddress write: {}\n", val, self.t);
             self.w = 1;
         }
         else {
-            //info!("PPUADDR val: {}, tAddr before second ppuAddress write: {}\n", val, self.t);
             self.t = (self.t & 0xFF00) | (val as u16);
-            //info!("PPUADDR val: {}, tAddr/vAddr after second ppuAddress write: {}\n", val, self.t);
             self.v = self.t;
             self.w = 0;
         }
@@ -672,7 +644,7 @@ impl<'a> Ppu<'a> {
         let vPtr = *&self.v;
         let mut ppuData = self.ppuBus.readPpuMem(vPtr);
 
-        if (self.v & 0x3F00) < 0x3F00 {
+        if (self.v & 0x3FFF) < 0x3F00 {
             tempBufData = self.bufData;
             self.bufData = ppuData;
             ppuData = tempBufData;
@@ -683,7 +655,6 @@ impl<'a> Ppu<'a> {
         }
 
         self.v = if self.fIncMode == 0 { self.v.wrapping_add(1) } else { self.v.wrapping_add(32) };
-        //info!("vAddr after ppuData read: {}\n", self.v);
         return ppuData;
     }
 
@@ -723,8 +694,8 @@ impl<'a> Ppu<'a> {
         self.bgShiftPatLo = (self.bgShiftPatLo & 0xFF00) | self.bgTileLsb as u16;
         self.bgShiftPatHi = (self.bgShiftPatHi & 0xFF00) | self.bgTileMsb as u16;
 
-        self.bgShiftAttrLo = (self.bgShiftAttrLo & 0xFF00) | (if self.bgTileAttr & 0b01 == 1 { 0x00FF } else { 0x0000 });
-        self.bgShiftAttrHi = (self.bgShiftAttrHi & 0xFF00) | (if self.bgTileAttr & 0b10 == 0b10 { 0x00FF } else { 0x0000 });
+        self.bgShiftAttrLo = (self.bgShiftAttrLo & 0xFF00) | (if self.bgTileAttr & 1 == 1 { 0x00FF } else { 0x0000 });
+        self.bgShiftAttrHi = (self.bgShiftAttrHi & 0xFF00) | (if self.bgTileAttr & 2 == 2 { 0x00FF } else { 0x0000 });
     }
 
     fn updateBackgroundShiftRegisters(&mut self) -> () {

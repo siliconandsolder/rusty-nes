@@ -67,17 +67,13 @@ impl<'a> Console<'a> {
 
         let fileName = match game {
             None => {
-                Console::loadFileScreen(&mut canvas, eventPump.clone())
+                Console::loadSplashScreen(&mut canvas, eventPump.clone())
             }
             Some(fileName) => {
                 String::from(fileName)
             }
         };
         let filePath = Path::new(fileName.as_str());
-
-        canvas.clear();
-        canvas.set_draw_color(Color::RGB(0, 0, 0));
-        canvas.present();
 
         let controller1 = Rc::new(RefCell::new(Controller::new(eventPump)));
         let cartridge = Rc::new(RefCell::new(Cartridge::new(filePath)));
@@ -101,7 +97,7 @@ impl<'a> Console<'a> {
         }
     }
 
-    fn loadFileScreen(canvas: &mut WindowCanvas, eventPump: Rc<RefCell<EventPump>>) -> String {
+    fn loadSplashScreen(canvas: &mut WindowCanvas, eventPump: Rc<RefCell<EventPump>>) -> String {
         let textureCreator = canvas.texture_creator();
         let imgBytes = include_bytes!("./resources/rustynes_splash_screen.png");
         let imgTexture = textureCreator.load_texture_bytes(imgBytes).unwrap();
@@ -113,6 +109,7 @@ impl<'a> Console<'a> {
                 match event {
                     Event::DropFile {filename, .. } => { return filename; }
                     Event::KeyDown { keycode: Some(Keycode::Escape), .. } => { exit(0) }
+                    Event::Quit { .. } => { exit(0); }
                     _ => {}
                 }
             }
