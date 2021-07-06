@@ -29,7 +29,7 @@ impl ControlRegister {
             mirrorMode: initMirrorType,
             prgMode: PrgMode::FixLastBank,
             chrMode: ChrMode::EightKilo,
-            registerValue: 0x0C
+            registerValue: 0xC
         }
     }
 
@@ -73,7 +73,7 @@ impl ControlRegister {
     }
 
     pub fn reset(&mut self) -> () {
-        self.setValues(self.registerValue | 0x0C);
+        self.setValues(self.registerValue | 0xC);
     }
 
     pub fn getMirrorMode(&self) -> MIRROR {

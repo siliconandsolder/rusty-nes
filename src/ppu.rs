@@ -207,9 +207,7 @@ impl<'a> Clocked for Ppu<'a> {
                 match (self.cycle - 1) % 8 {
                     0 => {
                         self.loadBackgroundShiftRegisters();
-                        self.bgTileId = self.ppuBus.readPpuMem(
-                            0x2000 | (vAddr & 0x0FFF)
-                        );
+                        self.bgTileId = self.ppuBus.readPpuMem(0x2000 | (vAddr & 0x0FFF));
                     }
                     2 => {
                         let bgTileAddr = 0x23C0 | (vAddr & 0x0C00) | ((vAddr >> 4) & 0x38) | ((vAddr >> 2) & 0x07);
@@ -227,21 +225,21 @@ impl<'a> Clocked for Ppu<'a> {
                         // if (coarseY & 2) == 2 { self.bgTileAttr >>= 4; }
                         // if (coarseX & 2) == 2 { self.bgTileAttr >>= 2; }
                         // self.bgTileAttr &= 3;
-                        let shift = ((vAddr & 0x40) >> 4) | (vAddr & 2);
+                        let shift = ((vAddr >> 4) & 4) | (vAddr & 2);
                         self.bgTileAttr = (self.bgTileAttr >> shift as u8) & 3;
                     }
                     4 => {
                         self.bgTileLsb = self.ppuBus.readPpuMem(
-                            ((self.fBckTile as u16) << 12) |
-                                ((self.bgTileId as u16) << 4) |
-                                ((vAddr >> 12) & 0b0111 as u16)
+                            ((self.fBckTile as u16) << 12) +
+                                ((self.bgTileId as u16) << 4) +
+                                ((vAddr >> 12) & 7 as u16)
                         );
                     }
                     6 => {
                         self.bgTileMsb = self.ppuBus.readPpuMem(
-                            (((self.fBckTile as u16) << 12) |
-                                ((self.bgTileId as u16) << 4) |
-                                ((vAddr >> 12) & 0b0111 as u16)) + 8 as u16
+                            (((self.fBckTile as u16) << 12) +
+                                ((self.bgTileId as u16) << 4) +
+                                ((vAddr >> 12) & 7 as u16)) + 8 as u16
                         );
                     }
                     7 => {

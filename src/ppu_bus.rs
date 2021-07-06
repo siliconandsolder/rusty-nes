@@ -26,18 +26,18 @@ impl PpuBus {
 
     #[inline]
     pub fn readPpuMem(&self, ref addr: u16) -> u8 {
-        let addr = *addr & 0x3FFF;
-        if addr < 0x2000 {
-            return self.cart.borrow_mut().ppuRead(addr);
+        let adr = *addr & 0x3FFF;
+        if adr < 0x2000 {
+            return self.cart.borrow_mut().ppuRead(adr);
         }
-        else if addr < 0x3F00 {
-            let realAddr = addr & 0x0FFF;
+        else if adr < 0x3F00 {
+            let realAddr = adr & 0x0FFF;
 
             match self.cart.borrow().getMirrorType() {
                 MIRROR::HORIZONTAL => {
                     return match realAddr {
                         a if a < 0x0800 => { self.tblName[(a & 0x03FF) as usize].clone() }
-                        _ => { self.tblName[(realAddr & 0x0BFF) as usize].clone() }
+                        _ => { self.tblName[((realAddr & 0x03FF) | 0x0400) as usize].clone() }
                     };
                 }
                 MIRROR::VERTICAL => {
@@ -45,8 +45,8 @@ impl PpuBus {
                 }
                 _ => { panic!("Unrecognized Mirror Type: {:?}", self.cart.borrow().getMirrorType()); }
             }
-        } else if addr < 0x4000 {
-            let mut realAddr = addr & 0x001F;
+        } else if adr < 0x4000 {
+            let mut realAddr = adr & 0x001F;
             if (realAddr >= 16) && (realAddr % 4 == 0) { realAddr -= 16; }  // fourth byte is transparent (background)
             return self.tblPalette[realAddr as usize].clone();
         }
@@ -65,7 +65,7 @@ impl PpuBus {
                 MIRROR::HORIZONTAL => {
                     match addr {
                         a if a < 0x2800 => { self.tblName[(a & 0x03FF) as usize] = val; }
-                        _ => { self.tblName[(addr & 0x0BFF) as usize] = val; }
+                        _ => { self.tblName[((addr & 0x03FF) | 0x0400) as usize] = val; }
                     }
                 }
                 MIRROR::VERTICAL => {
