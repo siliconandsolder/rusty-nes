@@ -4,7 +4,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 use crate::cartridge::Cartridge;
-use crate::mappers::mapper::MIRROR;
+use crate::mappers::mapper::MirrorType;
 
 pub struct PpuBus {
     tblPalette: Vec<u8>,
@@ -34,16 +34,21 @@ impl PpuBus {
             let realAddr = adr & 0x0FFF;
 
             match self.cart.borrow().getMirrorType() {
-                MIRROR::HORIZONTAL => {
+                MirrorType::Horizontal => {
                     return match realAddr {
                         a if a < 0x0800 => { self.tblName[(a & 0x03FF) as usize].clone() }
                         _ => { self.tblName[((realAddr & 0x03FF) | 0x0400) as usize].clone() }
                     };
                 }
-                MIRROR::VERTICAL => {
+                MirrorType::Vertical => {
                     return self.tblName[(realAddr & 0x07FF) as usize].clone();
                 }
-                _ => { panic!("Unrecognized Mirror Type: {:?}", self.cart.borrow().getMirrorType()); }
+                MirrorType::SingleScreenLow => {
+                    return self.tblName[(realAddr & 0x03FF) as usize].clone();
+                }
+                MirrorType::SingleScreenHigh => {
+                    return self.tblName[((realAddr & 0x03FF) | 0x400) as usize].clone();
+                }
             }
         } else if adr < 0x4000 {
             let mut realAddr = adr & 0x001F;
@@ -62,16 +67,21 @@ impl PpuBus {
             //let realAddr = addr & 0x0FFF;
 
             match self.cart.borrow().getMirrorType() {
-                MIRROR::HORIZONTAL => {
+                MirrorType::Horizontal => {
                     match addr {
                         a if a < 0x2800 => { self.tblName[(a & 0x03FF) as usize] = val; }
                         _ => { self.tblName[((addr & 0x03FF) | 0x0400) as usize] = val; }
                     }
                 }
-                MIRROR::VERTICAL => {
+                MirrorType::Vertical => {
                     self.tblName[(addr & 0x07FF) as usize] = val;
                 }
-                _ => { panic!("Unrecognized Mirror Type: {:?}", self.cart.borrow().getMirrorType()); }
+                MirrorType::SingleScreenLow => {
+                    self.tblName[(addr & 0x03FF) as usize] = val;
+                }
+                MirrorType::SingleScreenHigh => {
+                    self.tblName[((addr & 0x03FF) | 0x400) as usize] = val;
+                }
             }
         } else if addr < 0x4000 {
             let mut realAddr = addr & 0x001F;

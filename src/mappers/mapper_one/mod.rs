@@ -6,7 +6,7 @@ pub mod control_register;
 pub mod prg_register;
 pub mod chr_register;
 
-use crate::mappers::mapper::{Mapper, MIRROR};
+use crate::mappers::mapper::{Mapper, MirrorType};
 use crate::mappers::mapper_one::control_register::{ControlRegister, PrgMode, ChrMode};
 use crate::mappers::mapper_one::chr_register::ChrRegister;
 use crate::mappers::mapper_one::prg_register::PrgRegister;
@@ -22,7 +22,7 @@ pub struct Mapper1 {
 }
 
 impl Mapper1 {
-    pub fn new(numPrgBanks: u8, numChrBanks: u8, mirrorType: MIRROR) -> Self {
+    pub fn new(numPrgBanks: u8, numChrBanks: u8, mirrorType: MirrorType) -> Self {
         Mapper1 {
             shiftReg: 0x10,
             ctrlReg: ControlRegister::new(mirrorType),
@@ -157,7 +157,7 @@ impl Mapper for Mapper1 {
         return None;
     }
 
-    fn getMirrorType(&self) -> MIRROR {
+    fn getMirrorType(&self) -> MirrorType {
         return self.ctrlReg.getMirrorMode();
     }
 }

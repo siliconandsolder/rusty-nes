@@ -46,15 +46,35 @@ impl Noise {
         }
     }
 
+
+    pub fn writeEnvelopeVolumeCounter(&mut self, data: u8) -> () {
+        self.lengthHalt = (data & 0b0010_0000) == 0b0010_0000;
+        self.envLoop = !self.lengthHalt;
+        self.envEnabled = !((data & 0b0001_0000) == 0b0001_0000);
+        self.envPeriod = data & 0b0000_1111;
+        self.constVolume = self.envPeriod;
+    }
+
+    pub fn writeLoopNoise(&mut self, data: u8, noiseTimerVal: u16) -> () {
+        self.mode = (data & 128) == 128;
+        self.timerPeriod = noiseTimerVal;
+    }
+
+    pub fn writeLengthCounter(&mut self, lenTableVal: u8) -> () {
+        self.lengthCounter = if self.enabled { lenTableVal } else { 0 };
+        self.envStart = true;
+    }
+
     pub fn clockTimer(&mut self) -> () {
         if self.timer == 0 {
+            self.timer = self.timerPeriod;
             let shiftBit: u16 = if self.mode { 6 } else { 1 };
             let feedBack: u16 = (self.shift & 1) ^ ((self.shift >> shiftBit) & 1);
             self.shift >>= 1;
             self.shift |= feedBack << 14;
         }
         else {
-            self.timer = 1;
+            self.timer -= 1;
         }
     }
 

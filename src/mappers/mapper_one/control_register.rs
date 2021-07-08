@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 #![allow(warnings)]
 
-use crate::mappers::mapper::MIRROR;
+use crate::mappers::mapper::MirrorType;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum PrgMode {
@@ -17,14 +17,14 @@ pub enum ChrMode {
 }
 
 pub struct ControlRegister {
-    mirrorMode: MIRROR,
+    mirrorMode: MirrorType,
     prgMode: PrgMode,
     chrMode: ChrMode,
     registerValue: u8
 }
 
 impl ControlRegister {
-    pub fn new(initMirrorType: MIRROR) -> Self {
+    pub fn new(initMirrorType: MirrorType) -> Self {
         ControlRegister {
             mirrorMode: initMirrorType,
             prgMode: PrgMode::FixLastBank,
@@ -37,16 +37,16 @@ impl ControlRegister {
         self.registerValue = regVal;
         match regVal & 3 {
             0 => {
-                self.mirrorMode = MIRROR::ONESCREEN_LO;
+                self.mirrorMode = MirrorType::SingleScreenLow;
             }
             1 => {
-                self.mirrorMode = MIRROR::ONESCREEN_HI;
+                self.mirrorMode = MirrorType::SingleScreenHigh;
             }
             2 => {
-                self.mirrorMode = MIRROR::VERTICAL;
+                self.mirrorMode = MirrorType::Vertical;
             }
             3 => {
-                self.mirrorMode = MIRROR::HORIZONTAL;
+                self.mirrorMode = MirrorType::Horizontal;
             }
             _ => { panic!("Should never reach this."); }
         }
@@ -76,7 +76,7 @@ impl ControlRegister {
         self.setValues(self.registerValue | 0xC);
     }
 
-    pub fn getMirrorMode(&self) -> MIRROR {
+    pub fn getMirrorMode(&self) -> MirrorType {
         return self.mirrorMode;
     }
 

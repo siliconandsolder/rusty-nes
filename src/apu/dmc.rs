@@ -46,6 +46,24 @@ impl<'a> DMC<'a> {
         }
     }
 
+    pub fn writeIrqLoopFreq(&mut self, data: u8, ratePeriod: u16) -> () {
+        self.irqEnabled = (data & 128) == 128;
+        self.loopEnabled = (data & 64) == 64;
+        self.ratePeriod = ratePeriod;
+    }
+
+    pub fn writeLoadCounter(&mut self, data: u8) -> () {
+        self.bitCounter = data & 0b0111_1111;
+    }
+
+    pub fn writeSampleAddress(&mut self, data: u8) -> () {
+        self.sampleAddr = (0xC000 | (data as u16 * 64 as u16));
+    }
+
+    pub fn writeSampleLength(&mut self, data: u8) -> () {
+        self.sampleLength = ((data as u16) << 4) | 1;
+    }
+
     pub fn clockRate(&mut self) -> () {
         if !self.enabled {
             return;
@@ -55,23 +73,7 @@ impl<'a> DMC<'a> {
 
         if self.rateValue == 0 {
             self.rateValue = self.ratePeriod;
-            if self.bitCounter == 0 {
-                return;
-            }
-
-            if self.shift & 1 == 1 {
-                if self.directLoad <= 125 {
-                    self.directLoad += 2;
-                }
-            }
-            else {
-                if self.directLoad >= 2 {
-                    self.directLoad -= 2;
-                }
-            }
-
-            self.shift >>= 1;
-            self.bitCounter -= 1;
+            self.updateShift();
         }
         else {
             self.rateValue -= 1;
@@ -104,5 +106,25 @@ impl<'a> DMC<'a> {
 
     pub fn output(&self) -> u8 {
         return self.directLoad;
+    }
+
+    fn updateShift(&mut self) -> () {
+        if self.bitCounter == 0 {
+            return;
+        }
+
+        if self.shift & 1 == 1 {
+            if self.directLoad <= 125 {
+                self.directLoad += 2;
+            }
+        }
+        else {
+            if self.directLoad >= 2 {
+                self.directLoad -= 2;
+            }
+        }
+
+        self.shift >>= 1;
+        self.bitCounter -= 1;
     }
 }

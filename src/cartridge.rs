@@ -9,8 +9,8 @@ use std::io::{BufReader, Read};
 use std::ptr::{slice_from_raw_parts, slice_from_raw_parts_mut};
 use std::borrow::{BorrowMut, Borrow};
 use crate::mappers::mapper0::Mapper0;
-use crate::mappers::mapper::{Mapper, MIRROR};
-use crate::mappers::mapper::MIRROR::{VERTICAL, HORIZONTAL};
+use crate::mappers::mapper::{Mapper, MirrorType};
+use crate::mappers::mapper::MirrorType::{Vertical, Horizontal};
 use crate::mappers::mapper_one::Mapper1;
 use crate::mappers::mapper2::Mapper2;
 
@@ -45,7 +45,7 @@ pub struct Cartridge {
     vPrgMem: Vec<u8>,
     vChrMem: Vec<u8>,
     pMapper: Box<dyn Mapper>,
-    mirror: MIRROR,
+    mirror: MirrorType,
     hasPrgRam: bool,
 }
 
@@ -113,7 +113,7 @@ impl Cartridge {
         }
 
         let mut mapper: Option<Box<dyn Mapper>> = None;
-        let mirror: MIRROR = if header.mapper1 & 0x01 == 1 { VERTICAL } else { HORIZONTAL };
+        let mirror: MirrorType = if header.mapper1 & 0x01 == 1 { Vertical } else { Horizontal };
 
         match mapperId {
             0 => { mapper = Some(Box::new(Mapper0::new(numPrgBanks, numChrBanks, mirror))) }
@@ -190,7 +190,7 @@ impl Cartridge {
         }
     }
 
-    pub fn getMirrorType(&self) -> MIRROR {
+    pub fn getMirrorType(&self) -> MirrorType {
         return self.pMapper.as_ref().borrow().getMirrorType();
     }
 }

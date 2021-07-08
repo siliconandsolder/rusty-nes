@@ -1,16 +1,16 @@
 #![allow(non_snake_case)]
 #![allow(warnings)]
 
-use crate::mappers::mapper::{MIRROR, Mapper};
+use crate::mappers::mapper::{MirrorType, Mapper};
 
 pub struct Mapper0 {
     numPrgBanks: u8,
     numChrBanks: u8,
-    mirrorType: MIRROR,
+    mirrorType: MirrorType,
 }
 
 impl Mapper0 {
-    pub fn new(numPrgBanks: u8, numChrBanks: u8, mirrorType: MIRROR) -> Self {
+    pub fn new(numPrgBanks: u8, numChrBanks: u8, mirrorType: MirrorType) -> Self {
         Mapper0 {
             numPrgBanks,
             numChrBanks,
@@ -59,7 +59,7 @@ impl Mapper for Mapper0 {
     }
 
     #[inline]
-    fn getMirrorType(&self) -> MIRROR {
+    fn getMirrorType(&self) -> MirrorType {
         return self.mirrorType;
     }
 }

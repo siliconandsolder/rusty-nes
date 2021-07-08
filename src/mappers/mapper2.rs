@@ -2,17 +2,17 @@
 #![allow(warnings)]
 #![allow(exceeding_bitshifts)]
 
-use crate::mappers::mapper::{MIRROR, Mapper};
+use crate::mappers::mapper::{MirrorType, Mapper};
 
 pub struct Mapper2 {
     switchBank: u8,
     lastBank: u8,
     hasChrRam: bool,
-    mirrorType: MIRROR
+    mirrorType: MirrorType
 }
 
 impl Mapper2 {
-    pub fn new(numPrgBanks: u8, numChrBanks: u8, mirrorType: MIRROR) -> Self {
+    pub fn new(numPrgBanks: u8, numChrBanks: u8, mirrorType: MirrorType) -> Self {
         Mapper2 {
             switchBank: 0,
             lastBank: numPrgBanks - 1,
@@ -61,7 +61,7 @@ impl Mapper for Mapper2 {
         return None;
     }
 
-    fn getMirrorType(&self) -> MIRROR {
+    fn getMirrorType(&self) -> MirrorType {
         return self.mirrorType;
     }
 }

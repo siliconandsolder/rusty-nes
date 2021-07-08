@@ -33,6 +33,22 @@ impl Triangle {
         }
     }
 
+    pub fn writeLinearCounter(&mut self, data: u8) -> () {
+        self.linearCounterEnabled = (data & 128) == 128;
+        self.lengthCounterEnabled = !self.linearCounterEnabled;
+        self.linearCounterPeriod = data & 0b01111111;
+    }
+
+    pub fn writeTimer(&mut self, data: u8) -> () {
+        self.timerPeriod = (self.timerPeriod & 0xFF00) | data as u16;
+    }
+
+    pub fn writeLengthCounter(&mut self, data: u8, lenTableVal: u8) -> () {
+        self.timerPeriod = (self.timerPeriod & 0x00FF) as u16 | ((data as u16 & 7 as u16) << 8) as u16;
+        self.lengthCounterValue = if self.enabled { lenTableVal } else { 0 };
+        self.linearCounterReload = true;
+    }
+
     pub fn clockTimer(&mut self) -> () {
         if self.timer == 0 {
             self.timer = self.timerPeriod;

@@ -65,15 +65,43 @@ impl Pulse {
         }
     }
 
+    pub fn writeDuty(&mut self, data: u8) -> () {
+        self.dutyMode = (data & 0b1100_0000) >> 6;
+        self.lengthHalt = (data & 0b0010_0000) == 0b0010_0000;
+        self.envLoop = self.lengthHalt;
+        self.constVolume = (data & 0b0001_0000) == 0b0001_0000;
+        self.envEnabled = !self.constVolume;
+        self.envPeriod = data & 0b0000_1111;
+        self.volume = self.envPeriod;
+        self.envStart = true;
+    }
+
+    pub fn writeSweep(&mut self, data: u8) -> () {
+        self.sweepEnabled = (data & 0b1000_0000) == 0b1000_0000;
+        self.sweepPeriod = ((data & 0b0111_0000) >> 4);
+        self.negate = (data & 0b0000_1000) == 0b0000_1000;
+        self.shift = data & 0b0000_0111;
+        self.sweepReload = true;
+    }
+
+    pub fn writeTimer(&mut self, data: u8) -> () {
+        self.timerPeriod = self.timerPeriod & 0xFF00 | data as u16
+    }
+
+    pub fn writeLengthCounter(&mut self, data: u8, lenTableVal: u8) -> () {
+        self.timerPeriod = (self.timerPeriod & 0x00FF) | ((data as u16 & 0b000_00111 as u16) << 8) as u16;
+        self.lengthCounter = if self.enabled { lenTableVal } else { 0 };
+        self.envStart = true;
+        self.dutyValue = 0;
+    }
+
     pub fn clockTimer(&mut self) -> () {
-        if self.enabled {
-            if self.timer == 0 {
-                self.timer = self.timerPeriod;
-                self.dutyValue = (self.dutyValue + 1) % 8;
-            }
-            else {
-                self.timer -= 1;
-            }
+        if self.timer == 0 {
+            self.timer = self.timerPeriod;
+            self.dutyValue = (self.dutyValue + 1) % 8;
+        }
+        else {
+            self.timer -= 1;
         }
     }
 

@@ -2,11 +2,11 @@
 #![allow(warnings)]
 
 #[derive(Debug, Copy, Clone)]
-pub enum MIRROR {
-    ONESCREEN_LO,
-    ONESCREEN_HI,
-    VERTICAL,
-    HORIZONTAL,
+pub enum MirrorType {
+    SingleScreenLow,
+    SingleScreenHigh,
+    Vertical,
+    Horizontal,
 }
 
 pub trait Mapper {
@@ -15,5 +15,5 @@ pub trait Mapper {
     fn ppuMapRead(&mut self, addr: u16) -> Option<u32>;
     fn ppuMapWrite(&mut self, addr: u16, val: u8) -> Option<u32>;
 
-    fn getMirrorType(&self) -> MIRROR;
+    fn getMirrorType(&self) -> MirrorType;
 }
