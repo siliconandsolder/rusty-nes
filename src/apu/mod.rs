@@ -58,7 +58,7 @@ pub struct Apu<'a> {
 }
 
 impl<'a> Apu<'a> {
-    pub fn new(dataBus: Rc<RefCell<DataBus<'a>>>, audioSystem: AudioSubsystem) -> Self {
+    pub fn new(dataBus: Rc<RefCell<DataBus<'a>>>, audioSystem: Rc<RefCell<AudioSubsystem>>) -> Self {
         /*
         table:  .byte 10, 254, 20,  2, 40,  4, 80,  6
     .byte 160,  8, 60, 10, 14, 12, 26, 14

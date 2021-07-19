@@ -8,6 +8,9 @@ use sdl2::audio::{AudioQueue, AudioSpecDesired, AudioDevice};
 use sdl2::AudioSubsystem;
 use crate::apu::filter::Filter;
 use crate::apu::callback::Callback;
+use std::rc::Rc;
+use std::cell::RefCell;
+use std::borrow::Borrow;
 
 const AUDIO_HERTZ: u16 = 44100;
 const BUFFER_SIZE: usize = 512;
@@ -23,7 +26,7 @@ pub struct Audio {
 }
 
 impl Audio {
-    pub fn new(audioSystem: AudioSubsystem) -> Self {
+    pub fn new(audioSystem: Rc<RefCell<AudioSubsystem>>) -> Self {
 
         let specs = AudioSpecDesired {
             freq: Some(AUDIO_HERTZ as i32),
@@ -33,7 +36,7 @@ impl Audio {
 
         let (tx, rx) = flume::unbounded();
 
-        let playback: AudioDevice<Callback> = audioSystem.open_playback(None, &specs, |spec| {
+        let playback: AudioDevice<Callback> = audioSystem.borrow_mut().open_playback(None, &specs, |spec| {
             // you can't use a new() function to create the callback for some reason
             Callback {
                 rx

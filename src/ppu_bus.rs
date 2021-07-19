@@ -64,7 +64,6 @@ impl PpuBus {
         if addr < 0x2000 {
             return self.cart.borrow_mut().ppuWrite(addr, val);
         } else if addr < 0x3F00 {
-            //let realAddr = addr & 0x0FFF;
 
             match self.cart.borrow().getMirrorType() {
                 MirrorType::Horizontal => {

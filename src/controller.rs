@@ -14,6 +14,7 @@ pub struct Controller {
     controllerState: u8,
     controllerIdx: u8,
     strobe: bool,
+    events: Vec<Event>,
 }
 
 impl Controller {
@@ -23,6 +24,7 @@ impl Controller {
             controllerState: 0,
             controllerIdx: 0,
             strobe: false,
+            events: vec![]
         }
     }
 
@@ -46,6 +48,10 @@ impl Controller {
             self.strobe = false;
         }
     }
+
+    pub fn setEvents(&mut self, events: Vec<Event>) -> () {
+        self.events = events;
+    }
 }
 
 const A_POS: u8 = 0;
@@ -59,10 +65,9 @@ const RGT_POS: u8 = 7;
 
 impl Clocked for Controller {
     fn cycle(&mut self) {
-        for event in self.eventPump.borrow_mut().poll_iter() {
-            match event {
+        for event in self.events.as_slice() {
+            match *event {
                 Event::Quit { .. } => { exit(0); }
-                Event::KeyDown { keycode: Some(Keycode::Escape), .. } => { exit(0) }
 
                 Event::KeyDown { keycode: Some(Keycode::Z), .. } => { self.controllerState |= (1 << A_POS); }
                 Event::KeyDown { keycode: Some(Keycode::X), .. } => { self.controllerState |= (1 << B_POS); }

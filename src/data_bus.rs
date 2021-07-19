@@ -13,6 +13,7 @@ use crate::palette::*;
 use crate::controller::Controller;
 use crate::clock::Clocked;
 use crate::apu::Apu;
+use sdl2::event::Event;
 
 // Split the buses in two. One for CPU-PPU intercommunication, one for PPU data reads and writes.
 
@@ -109,6 +110,10 @@ impl<'a> DataBus<'a> {
     #[inline]
     pub fn getControllerInput(&mut self) -> () {
         self.controller1.as_ref().unwrap().borrow_mut().cycle();
+    }
+
+    pub fn setControllerEvents(&mut self, events: Vec<Event>) -> () {
+        self.controller1.as_ref().unwrap().borrow_mut().setEvents(events);
     }
 
     pub fn setDmcCpuStall(&mut self) -> () {
