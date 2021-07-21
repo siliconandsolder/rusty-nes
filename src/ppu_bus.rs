@@ -31,26 +31,25 @@ impl PpuBus {
             return self.cart.borrow_mut().ppuRead(adr);
         }
         else if adr < 0x3F00 {
-            let realAddr = adr & 0x0FFF;
-
-            match self.cart.borrow().getMirrorType() {
+            return match self.cart.borrow().getMirrorType() {
                 MirrorType::Horizontal => {
-                    return match realAddr {
-                        a if a < 0x0800 => { self.tblName[(a & 0x03FF) as usize].clone() }
-                        _ => { self.tblName[((realAddr & 0x03FF) | 0x0400) as usize].clone() }
-                    };
+                    match adr {
+                        a if a < 0x2800 => { self.tblName[(a & 0x03FF) as usize].clone() }
+                        _ => { self.tblName[((adr & 0x03FF) | 0x0400) as usize].clone() }
+                    }
                 }
                 MirrorType::Vertical => {
-                    return self.tblName[(realAddr & 0x07FF) as usize].clone();
+                    self.tblName[(adr & 0x07FF) as usize].clone()
                 }
                 MirrorType::SingleScreenLow => {
-                    return self.tblName[(realAddr & 0x03FF) as usize].clone();
+                    self.tblName[(adr & 0x03FF) as usize].clone()
                 }
                 MirrorType::SingleScreenHigh => {
-                    return self.tblName[((realAddr & 0x03FF) | 0x400) as usize].clone();
+                    self.tblName[((adr & 0x03FF) | 0x400) as usize].clone()
                 }
             }
-        } else if adr < 0x4000 {
+        }
+        else if adr < 0x4000 {
             let mut realAddr = adr & 0x001F;
             if (realAddr >= 16) && (realAddr % 4 == 0) { realAddr -= 16; }  // fourth byte is transparent (background)
             return self.tblPalette[realAddr as usize].clone();
@@ -60,30 +59,30 @@ impl PpuBus {
 
     #[inline]
     pub fn writePpuMem(&mut self, ref addr: u16, val: u8) -> () {
-        let addr = *addr & 0x3FFF;
-        if addr < 0x2000 {
-            return self.cart.borrow_mut().ppuWrite(addr, val);
-        } else if addr < 0x3F00 {
+        let adr = *addr & 0x3FFF;
+        if adr < 0x2000 {
+            return self.cart.borrow_mut().ppuWrite(adr, val);
+        } else if adr < 0x3F00 {
 
             match self.cart.borrow().getMirrorType() {
                 MirrorType::Horizontal => {
-                    match addr {
+                    match adr {
                         a if a < 0x2800 => { self.tblName[(a & 0x03FF) as usize] = val; }
                         _ => { self.tblName[((addr & 0x03FF) | 0x0400) as usize] = val; }
                     }
                 }
                 MirrorType::Vertical => {
-                    self.tblName[(addr & 0x07FF) as usize] = val;
+                    self.tblName[(adr & 0x07FF) as usize] = val;
                 }
                 MirrorType::SingleScreenLow => {
-                    self.tblName[(addr & 0x03FF) as usize] = val;
+                    self.tblName[(adr & 0x03FF) as usize] = val;
                 }
                 MirrorType::SingleScreenHigh => {
-                    self.tblName[((addr & 0x03FF) | 0x400) as usize] = val;
+                    self.tblName[((adr & 0x03FF) | 0x400) as usize] = val;
                 }
             }
-        } else if addr < 0x4000 {
-            let mut realAddr = addr & 0x001F;
+        } else if adr < 0x4000 {
+            let mut realAddr = adr & 0x001F;
             if (realAddr >= 16) && (realAddr % 4 == 0) { realAddr -= 16; }  // fourth byte is transparent (background)
             self.tblPalette[realAddr as usize] = val;
         }
