@@ -34,15 +34,16 @@ impl Mapper for Mapper3 {
     }
 
     fn cpuMapWrite(&mut self, addr: u16, val: u8) -> Option<u32> {
-        match *addr {
+        match addr {
             0x8000..=0x9FFF => {
-                if *addr % 2 == 0 {
+                if addr % 2 == 0 {
 
                 }
                 else {
 
                 }
             }
+            _ => {}
         }
 
         return None;
