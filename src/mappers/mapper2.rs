@@ -64,4 +64,16 @@ impl Mapper for Mapper2 {
     fn getMirrorType(&self) -> MirrorType {
         return self.mirrorType;
     }
+
+    fn isPrgRamEnabled(&self) -> bool {
+        return false;
+    }
+
+    fn checkIrq(&self) -> bool {
+        return false;
+    }
+
+    fn clearIrq(&mut self) -> () {}
+
+    fn cycleIrqCounter(&mut self) -> () {}
 }

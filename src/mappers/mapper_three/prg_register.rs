@@ -2,9 +2,9 @@
 #![allow(warnings)]
 
 pub struct PrgRegister {
-    eightBanks: Vec<u8>,
-    secondLastBank: u8,
-    lastBank: u8
+    pub eightBanks: Vec<u8>,
+    pub secondLastBank: u8,
+    pub lastBank: u8
 }
 
 impl PrgRegister {

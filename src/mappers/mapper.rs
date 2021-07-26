@@ -16,4 +16,10 @@ pub trait Mapper {
     fn ppuMapWrite(&mut self, addr: u16, val: u8) -> Option<u32>;
 
     fn getMirrorType(&self) -> MirrorType;
+    fn isPrgRamEnabled(&self) -> bool;
+
+    // irq stuff
+    fn checkIrq(&self) -> bool;
+    fn clearIrq(&mut self) -> ();
+    fn cycleIrqCounter(&mut self) -> ();
 }

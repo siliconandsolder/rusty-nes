@@ -90,7 +90,7 @@ impl Mapper for Mapper1 {
                                 self.chrReg.bankLo = self.shiftReg & 0x1F;
                             }
                             else {
-                                self.chrReg.bank8 = self.shiftReg & 0x1E;
+                                self.chrReg.bank8 = (self.shiftReg & 0x1E) >> 1;
                             }
                         }
                         2 => {
@@ -101,7 +101,7 @@ impl Mapper for Mapper1 {
                         3 => {
                             match self.ctrlReg.getPrgMode() {
                                 PrgMode::Switch32 => {
-                                    self.prgReg.bank32 = self.shiftReg & 0xE >> 1;
+                                    self.prgReg.bank32 = (self.shiftReg & 0xE) >> 1;
                                 }
                                 PrgMode::FixFirstBank => {
                                     self.prgReg.bankLo = 0;
@@ -112,6 +112,8 @@ impl Mapper for Mapper1 {
                                     self.prgReg.bankHi = self.numPrgBanks - 1;
                                 }
                             }
+
+                            self.prgReg.prgRamEnabled = ((self.shiftReg >> 4) & 1 != 1);
                         }
                         _ => {}
                     }
@@ -160,4 +162,16 @@ impl Mapper for Mapper1 {
     fn getMirrorType(&self) -> MirrorType {
         return self.ctrlReg.getMirrorMode();
     }
+
+    fn isPrgRamEnabled(&self) -> bool {
+        return self.prgReg.isPrgRamEnabled();
+    }
+
+    fn checkIrq(&self) -> bool {
+        return false;
+    }
+
+    fn clearIrq(&mut self) -> () {}
+
+    fn cycleIrqCounter(&mut self) -> () {}
 }

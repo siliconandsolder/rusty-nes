@@ -128,6 +128,14 @@ impl<'a> DataBus<'a> {
         self.cpu.as_ref().unwrap().borrow_mut().setNmi();
     }
 
+    pub fn cycleCartIrq(&mut self) -> () {
+        self.cartridge.as_ref().unwrap().borrow_mut().cycleIrq();
+
+        if self.cartridge.as_ref().unwrap().borrow_mut().checkIrq() {
+            self.triggerCpuIRQ();
+        }
+    }
+
     pub fn pushStack(&mut self, stackP: &mut u8, val: u8) -> () {
         self.cpuMem[(0x100 + *stackP as u16) as usize] = val;
         *stackP = stackP.wrapping_add(1);

@@ -2,8 +2,8 @@
 #![allow(warnings)]
 
 pub struct ChrRegister {
-    doubleBanks: Vec<u8>,
-    singleBanks: Vec<u8>,
+    pub doubleBanks: Vec<u8>,
+    pub singleBanks: Vec<u8>,
 }
 
 impl ChrRegister {

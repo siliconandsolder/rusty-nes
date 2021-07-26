@@ -99,6 +99,7 @@ pub struct Ppu<'a> {
 
     nmiOccured: bool,
     forceNmi: bool,
+    nmiIncoming: bool,
     nmiDelay: u8,
 
     // background shift registers
@@ -169,20 +170,33 @@ impl<'a> Clocked for Ppu<'a> {
         let preLine = self.scanLine == SCANLINE_MAX;
         let renderCycle = self.cycle > 1 && self.cycle < 258;
         let fetchCycle = self.cycle > 320 && self.cycle < 338;
+        let fireIrq = self.cycle == 260 && self.scanLine < 240;
+
+        if self.nmiDelay > 0 {
+            self.nmiDelay -= 1;
+            if self.nmiDelay == 0 && self.nmiOccured && self.fNmi == 1 {
+                self.dataBus.borrow_mut().ppuTriggerNMI();
+            }
+        }
 
         if self.scanLine == SCANLINE_VBLANK_MIN && self.cycle == 1 {
             self.nmiOccured = true;
 
             if self.fNmi == 1 {
-                self.dataBus.borrow_mut().ppuTriggerNMI();
+                self.setNmi();
             }
+
+            // if self.fNmi == 1 {
+            //     // implement a timer here - 15 cycles
+            //     self.dataBus.borrow_mut().ppuTriggerNMI();
+            // }
         }
 
         if self.scanLine == SCANLINE_MAX && self.cycle == 1 {
             self.fSprZero = 0;
             self.nmiOccured = false;
             //self.canTrigNmi = true;
-            //self.nmiDelay = 0;
+            self.nmiDelay = 0;
 
             // wipe sprites for next scanline
             self.fSprOver = 0;
@@ -193,6 +207,11 @@ impl<'a> Clocked for Ppu<'a> {
         }
 
         if renderEnabled {
+
+            if fireIrq {
+                self.dataBus.borrow_mut().cycleCartIrq();
+            }
+
             if (renderLine || preLine) && (renderCycle || fetchCycle) {
                 if self.fBckEnabled == 1 {
                     self.updateBackgroundShiftRegisters();
@@ -430,9 +449,7 @@ impl<'a> Clocked for Ppu<'a> {
                     }
                 }
             }
-
         }
-
 
         // call draw function here
         if renderEnabled && renderLine && renderCycle {
@@ -478,6 +495,7 @@ impl<'a> Ppu<'a> {
             bufData: 0,
             nmiOccured: false,
             forceNmi: false,
+            nmiIncoming: false,
             nmiDelay: 0,
             bgShiftPatLo: 0,
             bgShiftPatHi: 0,
@@ -552,8 +570,8 @@ impl<'a> Ppu<'a> {
 
     fn ppuCtrl(&mut self, val: u8) -> () {
 
-        if self.fNmi == 0 && ((val >> 7) & 1) == 1 && self.nmiOccured {
-            self.dataBus.borrow_mut().ppuTriggerNMI();
+        if self.fNmi == 0 && ((val >> 7) & 1) == 1 {
+            self.setNmi();
         }
 
         self.fNameTable = val & 3;
@@ -740,5 +758,11 @@ impl<'a> Ppu<'a> {
         byte = (byte & 0xCC) >> 2 | (byte & 0x33) << 2;
         byte = (byte & 0xAA) >> 1 | (byte & 0x55) << 1;
         return byte;
+    }
+
+    fn setNmi(&mut self) -> () {
+        if self.nmiDelay == 0 && self.nmiOccured {
+            self.nmiDelay = 15;
+        }
     }
 }
