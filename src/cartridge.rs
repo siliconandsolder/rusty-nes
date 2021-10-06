@@ -13,7 +13,7 @@ use crate::mappers::mapper::{Mapper, MirrorType};
 use crate::mappers::mapper::MirrorType::{Vertical, Horizontal};
 use crate::mappers::mapper_one::Mapper1;
 use crate::mappers::mapper2::Mapper2;
-use crate::mappers::mapper_three::Mapper3;
+use crate::mappers::mapper_four::Mapper4;
 
 const PRG_RAM_START: u16 = 0x6000;
 const PRG_RAM_END: u16 = 0x7FFF;
@@ -120,7 +120,7 @@ impl Cartridge {
             0 => { mapper = Some(Box::new(Mapper0::new(numPrgBanks, numChrBanks, mirror))) }
             1 => { mapper = Some(Box::new(Mapper1::new(numPrgBanks, numChrBanks, mirror))) }
             2 => { mapper = Some(Box::new(Mapper2::new(numPrgBanks, numChrBanks, mirror))) }
-            3 => { mapper = Some(Box::new(Mapper3::new(numPrgBanks, numChrBanks, mirror))) }
+            4 => { mapper = Some(Box::new(Mapper4::new(numPrgBanks, numChrBanks, mirror))) }
             _ => panic!("Unknown mapper: {}", mapperId)
         }
 

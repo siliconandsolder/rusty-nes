@@ -106,7 +106,7 @@ pub const OPCODE_INSTRUCTIONS: [OpcodeInfo; 256] = [
     // 0x00
     OpcodeInfo::new(OpMnemonic::BRK, IMP, 7, 0, 1),
     OpcodeInfo::new(OpMnemonic::ORA, IND_X, 6, 0, 2),
-    OpcodeInfo::new(OpMnemonic::KIL, IMP, 0, 0, 1),
+    OpcodeInfo::new(OpMnemonic::KIL, IMP, 1, 0, 1),
     OpcodeInfo::new(OpMnemonic::SLO, IND_X, 8, 0, 2),
     OpcodeInfo::new(OpMnemonic::NOP, ZPG, 3, 0, 3),
     OpcodeInfo::new(OpMnemonic::ORA, ZPG, 3, 0, 2),
@@ -124,7 +124,7 @@ pub const OPCODE_INSTRUCTIONS: [OpcodeInfo; 256] = [
     // 0x10
     OpcodeInfo::new(OpMnemonic::BPL, REL, 2, 1, 2),
     OpcodeInfo::new(OpMnemonic::ORA, IND_Y, 5, 1, 2),
-    OpcodeInfo::new(OpMnemonic::KIL, IMP, 0, 0, 1),
+    OpcodeInfo::new(OpMnemonic::KIL, IMP, 1, 0, 1),
     OpcodeInfo::new(OpMnemonic::SLO, IND_Y, 8, 1, 2),
     OpcodeInfo::new(OpMnemonic::NOP, ZPG_X, 4, 0, 3),
     OpcodeInfo::new(OpMnemonic::ORA, ZPG_X, 4, 0, 2),
@@ -142,7 +142,7 @@ pub const OPCODE_INSTRUCTIONS: [OpcodeInfo; 256] = [
     // 0x20
     OpcodeInfo::new(OpMnemonic::JSR, ABS, 6, 0, 3),
     OpcodeInfo::new(OpMnemonic::AND, IND_X, 6, 0, 2),
-    OpcodeInfo::new(OpMnemonic::KIL, IMP, 0, 0, 1),
+    OpcodeInfo::new(OpMnemonic::KIL, IMP, 1, 0, 1),
     OpcodeInfo::new(OpMnemonic::RLA, IND_X, 8, 0, 2),
     OpcodeInfo::new(OpMnemonic::BIT, ZPG, 3, 0, 2),
     OpcodeInfo::new(OpMnemonic::AND, ZPG, 3, 0, 2),
@@ -160,7 +160,7 @@ pub const OPCODE_INSTRUCTIONS: [OpcodeInfo; 256] = [
     // 0x30
     OpcodeInfo::new(OpMnemonic::BMI, REL, 2, 1, 2),
     OpcodeInfo::new(OpMnemonic::AND, IND_Y, 5, 1, 2),
-    OpcodeInfo::new(OpMnemonic::KIL, IMP, 0, 0, 1),
+    OpcodeInfo::new(OpMnemonic::KIL, IMP, 1, 0, 1),
     OpcodeInfo::new(OpMnemonic::RLA, IND_Y, 8, 1, 2),
     OpcodeInfo::new(OpMnemonic::NOP, ZPG_X, 4, 0, 3),
     OpcodeInfo::new(OpMnemonic::AND, ZPG_X, 4, 0, 2),
@@ -178,7 +178,7 @@ pub const OPCODE_INSTRUCTIONS: [OpcodeInfo; 256] = [
     // 0x40
     OpcodeInfo::new(OpMnemonic::RTI, IMP, 6, 0, 1),
     OpcodeInfo::new(OpMnemonic::EOR, IND_X, 6, 0, 2),
-    OpcodeInfo::new(OpMnemonic::KIL, IMP, 0, 0, 1),
+    OpcodeInfo::new(OpMnemonic::KIL, IMP, 1, 0, 1),
     OpcodeInfo::new(OpMnemonic::SRE, IND_X, 8, 0, 2),
     OpcodeInfo::new(OpMnemonic::NOP, ZPG, 3, 0, 3),
     OpcodeInfo::new(OpMnemonic::EOR, ZPG, 3, 0, 2),
@@ -196,7 +196,7 @@ pub const OPCODE_INSTRUCTIONS: [OpcodeInfo; 256] = [
     // 0x50
     OpcodeInfo::new(OpMnemonic::BVC, REL, 2, 1, 2),
     OpcodeInfo::new(OpMnemonic::EOR, IND_Y, 5, 1, 2),
-    OpcodeInfo::new(OpMnemonic::KIL, IMP, 0, 0, 1),
+    OpcodeInfo::new(OpMnemonic::KIL, IMP, 1, 0, 1),
     OpcodeInfo::new(OpMnemonic::SRE, IND_Y, 8, 1, 2),
     OpcodeInfo::new(OpMnemonic::NOP, ZPG_X, 4, 0, 3),
     OpcodeInfo::new(OpMnemonic::EOR, ZPG_X, 4, 0, 2),
@@ -214,7 +214,7 @@ pub const OPCODE_INSTRUCTIONS: [OpcodeInfo; 256] = [
     // 0x60
     OpcodeInfo::new(OpMnemonic::RTS, IMP, 6, 0, 1),
     OpcodeInfo::new(OpMnemonic::ADC, IND_X, 6, 0, 2),
-    OpcodeInfo::new(OpMnemonic::KIL, IMP, 0, 0, 1),
+    OpcodeInfo::new(OpMnemonic::KIL, IMP, 1, 0, 1),
     OpcodeInfo::new(OpMnemonic::RRA, IND_X, 8, 0, 2),
     OpcodeInfo::new(OpMnemonic::NOP, ZPG, 3, 0, 3),
     OpcodeInfo::new(OpMnemonic::ADC, ZPG, 3, 0, 2),
@@ -232,7 +232,7 @@ pub const OPCODE_INSTRUCTIONS: [OpcodeInfo; 256] = [
     // 0x70
     OpcodeInfo::new(OpMnemonic::BVS, REL, 2, 1, 2),
     OpcodeInfo::new(OpMnemonic::ADC, IND_Y, 5, 1, 2),
-    OpcodeInfo::new(OpMnemonic::KIL, IMP, 0, 0, 1),
+    OpcodeInfo::new(OpMnemonic::KIL, IMP, 1, 0, 1),
     OpcodeInfo::new(OpMnemonic::RRA, IND_Y, 8, 1, 2),
     OpcodeInfo::new(OpMnemonic::NOP, ZPG_X, 4, 0, 3),
     OpcodeInfo::new(OpMnemonic::ADC, ZPG_X, 4, 0, 2),
@@ -268,7 +268,7 @@ pub const OPCODE_INSTRUCTIONS: [OpcodeInfo; 256] = [
     // 0x90
     OpcodeInfo::new(OpMnemonic::BCC, REL, 2, 1, 1),
     OpcodeInfo::new(OpMnemonic::STA, IND_Y, 6, 0, 2),
-    OpcodeInfo::new(OpMnemonic::KIL, IMP, 0, 0, 1),
+    OpcodeInfo::new(OpMnemonic::KIL, IMP, 1, 0, 1),
     OpcodeInfo::new(OpMnemonic::AHX, IND_Y, 6, 0, 2),
     OpcodeInfo::new(OpMnemonic::STY, ZPG_X, 4, 0, 2),
     OpcodeInfo::new(OpMnemonic::STA, ZPG_X, 4, 0, 2),
@@ -304,7 +304,7 @@ pub const OPCODE_INSTRUCTIONS: [OpcodeInfo; 256] = [
     // 0xB0
     OpcodeInfo::new(OpMnemonic::BCS, REL, 2, 1, 2),
     OpcodeInfo::new(OpMnemonic::LDA, IND_Y, 5, 1, 2),
-    OpcodeInfo::new(OpMnemonic::KIL, IMP, 0, 0, 1),
+    OpcodeInfo::new(OpMnemonic::KIL, IMP, 1, 0, 1),
     OpcodeInfo::new(OpMnemonic::LAX, IND_Y, 5, 1, 2),
     OpcodeInfo::new(OpMnemonic::LDY, ZPG_X, 4, 0, 2),
     OpcodeInfo::new(OpMnemonic::LDA, ZPG_X, 4, 0, 2),
@@ -340,7 +340,7 @@ pub const OPCODE_INSTRUCTIONS: [OpcodeInfo; 256] = [
     // 0xD0
     OpcodeInfo::new(OpMnemonic::BNE, REL, 2, 1, 2),
     OpcodeInfo::new(OpMnemonic::CMP, IND_Y, 5, 1, 2),
-    OpcodeInfo::new(OpMnemonic::KIL, IMP, 0, 0, 1),
+    OpcodeInfo::new(OpMnemonic::KIL, IMP, 1, 0, 1),
     OpcodeInfo::new(OpMnemonic::DCP, IND_Y, 8, 1, 2),
     OpcodeInfo::new(OpMnemonic::NOP, IMT, 4, 0, 3),
     OpcodeInfo::new(OpMnemonic::CMP, ZPG_X, 4, 0, 2),
@@ -376,7 +376,7 @@ pub const OPCODE_INSTRUCTIONS: [OpcodeInfo; 256] = [
     // 0xF0
     OpcodeInfo::new(OpMnemonic::BEQ, REL, 2, 1, 2),
     OpcodeInfo::new(OpMnemonic::SBC, IND_Y, 5, 1, 2),
-    OpcodeInfo::new(OpMnemonic::KIL, IMP, 0, 0, 1),
+    OpcodeInfo::new(OpMnemonic::KIL, IMP, 1, 0, 1),
     OpcodeInfo::new(OpMnemonic::ISC, IND_Y, 8, 1, 2),
     OpcodeInfo::new(OpMnemonic::NOP, ZPG_X, 4, 0, 3),
     OpcodeInfo::new(OpMnemonic::SBC, ZPG_X, 4, 0, 2),
