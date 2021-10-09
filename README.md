@@ -87,7 +87,7 @@ Once the libraries are installed, you should be able to build a binary by runnin
 cargo build --release
 ```
 
-### Building on Windows
+## Building on Windows
 On Windows, building RustyNES is a little more complex. First, you'll need to run the following command in Command Prompt or Powershell:
 ```
 rustup target add i686-pc-windows-msvc
