@@ -82,7 +82,7 @@ macOS:
 brew install libsdl2-gfx-dev
 brew install libsdl2-image-dev
 ```
-Once the libraries are installed, you should be able to build a binary by navigating to the root directory and running
+Once the libraries are installed, you should be able to build a binary by running the following command in the root of your RustyNES repository: 
 ```
 cargo build --release
 ```
