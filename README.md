@@ -94,7 +94,7 @@ rustup target add i686-pc-windows-msvc
 ```
 This will allow you to build a 32-bit executable of RustyNES. Unfortunately, only 32-bit builds are supported right now, as I only have a 32-bit build of SDL_gfx.
 
-Following the Windows instructions outlined here <a href="https://github.com/Rust-SDL2/rust-sdl2">here</a> to install SDL2. You will also need SDL_Image and SDL_gfx. 32-bit SDL_Image libraries can be downloaded <a href="https://www.libsdl.org/projects/SDL_image/">here</a>, but SDL_gfx is more complex. SDL_gfx libraries were never released for Windows, but the creator did release the source code which I was able to compile with MSVC. I uploaded the SDL_gfx .lib and .dll files to <a href="https://www.dropbox.com/sh/tmzw9yseh3voie7/AADYmemWPv45N94fSCW--rU3a?dl=0">Dropbox</a>. Ignore the other files for now. Place both the SDL_Image and SDL_gfx .lib/.dll files in the following directory:
+Following the Windows instructions outlined here <a href="https://github.com/Rust-SDL2/rust-sdl2">here</a> to install SDL2. You will also need SDL_Image and SDL_gfx. 32-bit SDL_Image libraries can be downloaded <a href="https://www.libsdl.org/projects/SDL_image/">here</a>, but SDL_gfx is more complex. SDL_gfx libraries were never released for Windows, but the creator did release the source code which I was able to compile with MSVC. I uploaded the SDL_gfx .lib and .dll files, as well as necessary supporting .dll files, to <a href="https://www.dropbox.com/sh/tmzw9yseh3voie7/AADYmemWPv45N94fSCW--rU3a?dl=0">Dropbox</a>. Place both the SDL_Image and SDL_gfx .lib/.dll files in the following directory:
 ```
 C:\Users\{YOUR USERNAME}\.rustup\toolchains\stable-x86_64-pc-windows-msvc\lib\rustlib\i686-pc-windows-msvc\lib
 ```
