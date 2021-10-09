@@ -2,6 +2,9 @@
 
 An NES emulator written in Rust!
 
+https://user-images.githubusercontent.com/31429425/136135867-dcd07b5e-8dd4-4862-9bb5-18d45d7a7789.mp4
+
+
 ## Supported Mappers
 * Mapper 0
 * Mapper 1
@@ -17,7 +20,9 @@ Games can be loaded in two different ways.
 ### No Args
 If you run the binary/executable with no args, the following splash screen will appear.
 
-Simply drag-and-drop the .nes file into the window, and the game will load
+<img src="./src/resources/rustynes_splash_screen.png" width=500/>
+
+Simply drag-and-drop the .nes file into the window and start playing!
 
 ### Load a Specific ROM
 If you would like to load a .nes file at launch, you can use the following argument:
@@ -107,7 +112,3 @@ cargo build --release --target=i686-pc-windows-msvc
 * zlib1.dll
 
 All of these can be found the .rustup directory mentioned above.
-
-## RustyNES In Action!
-https://user-images.githubusercontent.com/31429425/136135867-dcd07b5e-8dd4-4862-9bb5-18d45d7a7789.mp4
-
