@@ -218,13 +218,13 @@ impl Mapper for Mapper4 {
     fn cycleIrqCounter(&mut self) -> () {
         if self.irqCounter == 0 {
             self.irqCounter = self.irqReload;
-
-            if self.irqEnabled {
-                self.irqReady = true;
-            }
         }
         else {
             self.irqCounter -= 1;
+
+            if self.irqCounter == 0 && self.irqEnabled {
+                self.irqReady = true;
+            }
         }
     }
 }
