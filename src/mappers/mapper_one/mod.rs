@@ -10,6 +10,7 @@ use crate::mappers::mapper::{Mapper, MirrorType};
 use crate::mappers::mapper_one::control_register::{ControlRegister, PrgMode, ChrMode};
 use crate::mappers::mapper_one::chr_register::ChrRegister;
 use crate::mappers::mapper_one::prg_register::PrgRegister;
+use crate::save_load::{Mapper1ChrRegData, Mapper1CtrlRegData, Mapper1Data, Mapper1PrgRegData, MapperData};
 
 pub struct Mapper1 {
     shiftReg: u8,
@@ -174,4 +175,58 @@ impl Mapper for Mapper1 {
     fn clearIrq(&mut self) -> () {}
 
     fn cycleIrqCounter(&mut self) -> () {}
+
+    fn saveState(&self) -> MapperData {
+        MapperData::M1(
+            Mapper1Data {
+                shiftReg: self.shiftReg,
+                ctrlReg: Mapper1CtrlRegData {
+                    mirrorMode: self.ctrlReg.getMirrorMode() as u8,
+                    prgMode: self.ctrlReg.getPrgMode() as u8,
+                    chrMode: self.ctrlReg.getChrMode() as u8,
+                    registerValue: self.ctrlReg.getRegisterValue()
+                },
+                chrReg: Mapper1ChrRegData {
+                    bankLo: self.chrReg.bankLo,
+                    bankHi: self.chrReg.bankHi,
+                    bank8: self.chrReg.bank8
+                },
+                prgReg: Mapper1PrgRegData {
+                    bankLo: self.prgReg.bankLo,
+                    bankHi: self.prgReg.bankHi,
+                    bank32: self.prgReg.bank32,
+                    prgRamEnabled: self.prgReg.prgRamEnabled
+                },
+                numPrgBanks: self.numPrgBanks,
+                numChrBanks: self.numChrBanks,
+                vPrgRam: self.vPrgRam.clone()
+            }
+        )
+    }
+
+    fn loadState(&mut self, data: &MapperData) -> () {
+        match data {
+            MapperData::M1(data) => {
+                self.shiftReg = data.shiftReg;
+                self.numPrgBanks = data.numPrgBanks;
+                self.numChrBanks = data.numChrBanks;
+                self.vPrgRam = data.vPrgRam.clone();
+
+                // ctrl reg
+                self.ctrlReg.setValues(data.ctrlReg.registerValue);
+
+                // chr reg
+                self.chrReg.bankLo = data.chrReg.bankLo;
+                self.chrReg.bankHi = data.chrReg.bankHi;
+                self.chrReg.bank8 = data.chrReg.bank8;
+
+                // prg reg
+                self.prgReg.bankLo = data.prgReg.bankLo;
+                self.prgReg.bankHi = data.prgReg.bankHi;
+                self.prgReg.bank32 = data.prgReg.bank32;
+                self.prgReg.prgRamEnabled = data.prgReg.prgRamEnabled;
+            }
+            _ => { panic!("Wrong mapper type") }
+        }
+    }
 }

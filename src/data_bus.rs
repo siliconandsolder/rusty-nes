@@ -59,6 +59,14 @@ impl<'a> DataBus<'a> {
         self.controller1 = Some(con1Ref);
     }
 
+    pub fn copyCpuMem(&self) -> Vec<u8> {
+        return self.cpuMem.clone();
+    }
+
+    pub fn loadCpuMem(&mut self, memory: &Vec<u8>) -> () {
+        self.cpuMem = memory.clone();
+    }
+
     #[inline]
     pub fn writeCpuMem(&mut self, ref addr: u16, val: u8) -> () {
         if *addr < 0x2000 {

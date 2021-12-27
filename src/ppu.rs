@@ -18,6 +18,7 @@ use std::io::Write;
 use sdl2::mouse::SystemCursor::No;
 use sdl2::video::WindowContext;
 use std::borrow::Borrow;
+use crate::save_load::{PpuBusData, PpuData};
 
 const SCANLINE_VISIBLE_MAX: u16 = 239;
 const SCANLINE_POST: u16 = 240;
@@ -154,12 +155,8 @@ pub struct Ppu<'a> {
     // SDL pixels (rectangles)
     canvas: Rc<RefCell<WindowCanvas>>,
     textureManager: TextureManager<'a>,
-    vPixels: Vec<Rect>,
     vPixelColours: Vec<u8>,
     vPixelPalette: Vec<u8>,
-
-    // debug
-    log: File,
 }
 
 impl<'a> Clocked for Ppu<'a> {
@@ -530,11 +527,119 @@ impl<'a> Ppu<'a> {
             ppuBus: ppuBus,
             canvas: canvas,
             textureManager: textureManager,
-            vPixels: vec![Rect::new(0, 0, 1, 1); 61440],
             vPixelColours: vec![0; (PIXEL_WIDTH * PIXEL_HEIGHT * 3) as usize],
             vPixelPalette: vec![0; (PIXEL_WIDTH * PIXEL_HEIGHT) as usize],
-            log: File::create("log.txt").unwrap(),
         }
+    }
+
+    pub fn saveState(&self) -> PpuData {
+        PpuData {
+            cycle: self.cycle,
+            scanLine: self.scanLine,
+            frameCycles: self.frameCycles,
+            isOddFrame: self.isOddFrame,
+            v: self.v,
+            t: self.t,
+            x: self.x,
+            w: self.w,
+            f: self.f,
+            prevReg: self.prevReg,
+            oamAddr: self.oamAddr,
+            bufData: self.bufData,
+            nmiOccured: self.nmiOccured,
+            forceNmi: self.forceNmi,
+            nmiIncoming: self.nmiIncoming,
+            nmiDelay: self.nmiDelay,
+            bgShiftPatLo: self.bgShiftPatLo,
+            bgShiftPatHi: self.bgShiftPatHi,
+            bgShiftAttrLo: self.bgShiftAttrLo,
+            bgShiftAttrHi: self.bgShiftAttrHi,
+            sprShiftPatLo: self.sprShiftPatLo.clone(),
+            sprShiftPatHi: self.sprShiftPatHi.clone(),
+            bgTileId: self.bgTileId,
+            bgTileAttr: self.bgTileAttr,
+            bgTileLsb: self.bgTileLsb,
+            bgTileMsb: self.bgTileMsb,
+            vSpriteLine: self.vSpriteLine.clone(),
+            spriteLineCount: self.spriteLineCount,
+            isZeroHitPossible: self.isZeroHitPossible,
+            isZeroBeingRendered: self.isZeroBeingRendered,
+            fNameTable: self.fNameTable,
+            fIncMode: self.fIncMode,
+            fSprTable: self.fSprTable,
+            fBckTile: self.fBckTile,
+            fSprHeight: self.fSprHeight,
+            fMaster: self.fMaster,
+            fNmi: self.fNmi,
+            fGrey: self.fGrey,
+            fBckLeft: self.fBckLeft,
+            fSprLeft: self.fSprLeft,
+            fBckEnabled: self.fBckEnabled,
+            fSprEnabled: self.fSprEnabled,
+            fColour: self.fColour,
+            fSprOver: self.fSprOver,
+            fSprZero: self.fSprZero,
+            vPixelColours: self.vPixelColours.clone(),
+            vPixelPalette: self.vPixelPalette.clone()
+        }
+    }
+    
+    pub fn loadState(&mut self, data: &PpuData) -> () {
+        self.cycle = data.cycle;
+        self.scanLine = data.scanLine;
+        self.frameCycles = data.frameCycles;
+        self.isOddFrame = data.isOddFrame;
+        self.v = data.v;
+        self.t = data.t;
+        self.x = data.x;
+        self.w = data.w;
+        self.f = data.f;
+        self.prevReg = data.prevReg;
+        self.oamAddr = data.oamAddr;
+        self.bufData = data.bufData;
+        self.nmiOccured = data.nmiOccured;
+        self.forceNmi = data.forceNmi;
+        self.nmiIncoming = data.nmiIncoming;
+        self.nmiDelay = data.nmiDelay;
+        self.bgShiftPatLo = data.bgShiftPatLo;
+        self.bgShiftPatHi = data.bgShiftPatHi;
+        self.bgShiftAttrLo = data.bgShiftAttrLo;
+        self.bgShiftAttrHi = data.bgShiftAttrHi;
+        self.sprShiftPatLo = data.sprShiftPatLo.clone();
+        self.sprShiftPatHi = data.sprShiftPatHi.clone();
+        self.bgTileId = data.bgTileId;
+        self.bgTileAttr = data.bgTileAttr;
+        self.bgTileLsb = data.bgTileLsb;
+        self.bgTileMsb = data.bgTileMsb;
+        self.vSpriteLine = data.vSpriteLine.clone();
+        self.spriteLineCount = data.spriteLineCount;
+        self.isZeroHitPossible = data.isZeroHitPossible;
+        self.isZeroBeingRendered = data.isZeroBeingRendered;
+        self.fNameTable = data.fNameTable;
+        self.fIncMode = data.fIncMode;
+        self.fSprTable = data.fSprTable;
+        self.fBckTile = data.fBckTile;
+        self.fSprHeight = data.fSprHeight;
+        self.fMaster = data.fMaster;
+        self.fNmi = data.fNmi;
+        self.fGrey = data.fGrey;
+        self.fBckLeft = data.fBckLeft;
+        self.fSprLeft = data.fSprLeft;
+        self.fBckEnabled = data.fBckEnabled;
+        self.fSprEnabled = data.fSprEnabled;
+        self.fColour = data.fColour;
+        self.fSprOver = data.fSprOver;
+        self.fSprZero = data.fSprZero;
+        self.vPixelColours = data.vPixelColours.clone();
+        self.vPixelPalette = data.vPixelPalette.clone();
+    }
+
+    pub fn saveBusState(&self) -> PpuBusData {
+        return self.ppuBus.saveState();
+    }
+
+    pub fn loadBusState(&mut self, data: &PpuBusData) -> () {
+        self.ppuBus.loadState(data);
     }
 
     pub fn readMem(&mut self, ref addr: u16) -> u8 {

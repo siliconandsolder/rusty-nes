@@ -20,6 +20,7 @@ use sdl2::gfx::framerate::FPSManager;
 use crate::ppu_bus::PpuBus;
 use crate::controller::Controller;
 use crate::apu::Apu;
+use crate::save_load::SaveState;
 use self::sdl2::audio::AudioSpecDesired;
 use sdl2::image::{InitFlag, LoadTexture};
 use self::sdl2::mouse::SystemCursor::No;
@@ -133,6 +134,12 @@ impl<'a> Console<'a> {
             match event {
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => { self.returnToSplashScreen(); }
                 Event::KeyDown { keycode: Some(Keycode::I), .. } => { self.showControls(); }
+                Event::KeyDown { keycode: Some(Keycode::S), .. } => { SaveState::save(
+                    self.cpu.clone(),
+                    self.ppu.clone(),
+                    self.apu.clone(),
+                    self.cartridge.clone())
+                }
                 _ => {}
             }
         }

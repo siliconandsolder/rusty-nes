@@ -7,7 +7,6 @@ use std::mem;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::ptr::{slice_from_raw_parts, slice_from_raw_parts_mut};
-use std::borrow::{BorrowMut, Borrow};
 use crate::mappers::mapper0::Mapper0;
 use crate::mappers::mapper::{Mapper, MirrorType};
 use crate::mappers::mapper::MirrorType::{Vertical, Horizontal};
@@ -15,6 +14,7 @@ use crate::mappers::mapper_one::Mapper1;
 use crate::mappers::mapper2::Mapper2;
 use crate::mappers::mapper3::Mapper3;
 use crate::mappers::mapper_four::Mapper4;
+use crate::save_load::{CartData, CartHeaderData, MapperData};
 
 const PRG_RAM_START: u16 = 0x6000;
 const PRG_RAM_END: u16 = 0x7FFF;
@@ -47,7 +47,6 @@ pub struct Cartridge {
     vPrgMem: Vec<u8>,
     vChrMem: Vec<u8>,
     pMapper: Box<dyn Mapper>,
-    mirror: MirrorType,
     hasPrgRam: bool,
 }
 
@@ -137,7 +136,6 @@ impl Cartridge {
             vPrgMem: prgMem,
             vChrMem: chrMem,
             pMapper: mapper.unwrap(),
-            mirror,
             hasPrgRam,
         };
     }
@@ -207,6 +205,53 @@ impl Cartridge {
     }
 
     pub fn getMirrorType(&self) -> MirrorType {
-        return self.pMapper.as_ref().borrow().getMirrorType();
+        return self.pMapper.getMirrorType();
+    }
+    
+    pub fn saveState(&self) -> CartData {
+        CartData{
+            header: CartHeaderData {
+                name: self.header.name,
+                prgSize: self.header.prgSize,
+                chrSize: self.header.chrSize,
+                mapper1: self.header.mapper1,
+                mapper2: self.header.mapper2,
+                prgRam: self.header.prgRam,
+                tvSys1: self.header.tvSys1,
+                tvSys2: self.header.tvSys2,
+                unused: self.header.unused
+            },
+            mapperId: self.mapperId,
+            numPrgBanks: self.numPrgBanks,
+            numChrBanks: self.numChrBanks,
+            vChrMem: self.vChrMem.clone(),
+            hasPrgRam: self.hasPrgRam
+        }
+    }
+    
+    pub fn loadState(&mut self, data: &CartData) -> () {
+        self.header.name = data.header.name;
+        self.header.prgSize = data.header.prgSize;
+        self.header.chrSize = data.header.chrSize;
+        self.header.mapper1 = data.header.mapper1;
+        self.header.mapper2 = data.header.mapper2;
+        self.header.prgRam = data.header.prgRam;
+        self.header.tvSys1 = data.header.tvSys1;
+        self.header.tvSys2 = data.header.tvSys2;
+        self.header.unused = data.header.unused;
+
+        self.mapperId = data.mapperId;
+        self.numPrgBanks = data.numPrgBanks;
+        self.numChrBanks = data.numChrBanks;
+        self.vChrMem = data.vChrMem.clone();
+        self.hasPrgRam = data.hasPrgRam;
+    }
+
+    pub fn saveMapperState(&self) -> MapperData {
+        return self.pMapper.saveState();
+    }
+
+    pub fn loadMapperState(&mut self, data: &MapperData) -> () {
+        self.pMapper.loadState(data);
     }
 }

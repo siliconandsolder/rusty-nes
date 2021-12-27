@@ -2,7 +2,9 @@
 #![allow(warnings)]
 #![allow(exceeding_bitshifts)]
 
+use std::convert::TryFrom;
 use crate::mappers::mapper::{Mapper, MirrorType};
+use crate::save_load::{Mapper3Data, MapperData};
 
 pub struct Mapper3 {
     chrBank: u8,
@@ -58,4 +60,23 @@ impl Mapper for Mapper3 {
     fn clearIrq(&mut self) -> () {}
 
     fn cycleIrqCounter(&mut self) -> () {}
+
+    fn saveState(&self) -> MapperData {
+        MapperData::M3(
+            Mapper3Data {
+                chrBank: self.chrBank,
+                mirrorType: self.mirrorType as u8
+            }
+        )
+    }
+
+    fn loadState(&mut self, data: &MapperData) -> () {
+        match data {
+            MapperData::M3(data) => {
+                self.chrBank = data.chrBank;
+                self.mirrorType = MirrorType::try_from(data.mirrorType).unwrap();
+            }
+            _ => { panic!("Wrong mapper type") }
+        }
+    }
 }

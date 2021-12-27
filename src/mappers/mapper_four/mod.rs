@@ -1,9 +1,11 @@
 #![allow(non_snake_case)]
 #![allow(warnings)]
 
+use std::convert::TryFrom;
 use crate::mappers::mapper_four::chr_register::ChrRegister;
 use crate::mappers::mapper_four::prg_register::PrgRegister;
 use crate::mappers::mapper::{MirrorType, Mapper};
+use crate::save_load::{Mapper4Data, MapperData};
 
 mod chr_register;
 mod prg_register;
@@ -225,6 +227,53 @@ impl Mapper for Mapper4 {
             if self.irqCounter == 0 && self.irqEnabled {
                 self.irqReady = true;
             }
+        }
+    }
+
+    fn saveState(&self) -> MapperData {
+        MapperData::M4(
+            Mapper4Data {
+                vChrBanks: self.vChrBanks.clone(),
+                vPrgBanks: self.vPrgBanks.clone(),
+                vMemRegs: self.vMemRegs.clone(),
+                vPrgRam: self.vPrgRam.clone(),
+                secLastPrgBank: self.secLastPrgBank,
+                lastPrgBank: self.lastPrgBank,
+                mirrorType: self.mirrorType as u8,
+                target: self.target,
+                prgBankMode: self.prgBankMode,
+                chrInversion: self.chrInversion,
+                writeProtect: self.writeProtect,
+                prgRamEnabled: self.prgRamEnabled,
+                irqCounter: self.irqCounter,
+                irqReload: self.irqReload,
+                irqEnabled: self.irqEnabled,
+                irqReady: self.irqReady
+            }
+        )
+    }
+
+    fn loadState(&mut self, data: &MapperData) -> () {
+        match data {
+            MapperData::M4(data) => {
+                self.vChrBanks = data.vChrBanks.clone();
+                self.vPrgBanks = data.vPrgBanks.clone();
+                self.vMemRegs = data.vMemRegs.clone();
+                self.vPrgRam = data.vPrgRam.clone();
+                self.secLastPrgBank = data.secLastPrgBank;
+                self.lastPrgBank = data.lastPrgBank;
+                self.mirrorType = MirrorType::try_from(data.mirrorType).unwrap();
+                self.target = data.target;
+                self.prgBankMode = data.prgBankMode;
+                self.chrInversion = data.chrInversion;
+                self.writeProtect = data.writeProtect;
+                self.prgRamEnabled = data.prgRamEnabled;
+                self.irqCounter = data.irqCounter;
+                self.irqReload = data.irqReload;
+                self.irqEnabled = data.irqEnabled;
+                self.irqReady = data.irqReady;
+            }
+            _ => { panic!("Wrong mapper type") }
         }
     }
 }

@@ -5,6 +5,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use crate::cartridge::Cartridge;
 use crate::mappers::mapper::MirrorType;
+use crate::save_load::PpuBusData;
 
 pub struct PpuBus {
     tblPalette: Vec<u8>,
@@ -22,6 +23,20 @@ impl PpuBus {
             cart: cartridge,
             oamMem: vec![0; 0x0100],
         }
+    }
+
+    pub fn saveState(&self) -> PpuBusData {
+        PpuBusData {
+            tblPalette: self.tblPalette.clone(),
+            tblName: self.tblName.clone(),
+            oamMem: self.oamMem.clone()
+        }
+    }
+
+    pub fn loadState(&mut self, data: &PpuBusData) -> () {
+        self.tblPalette = data.tblPalette.clone();
+        self.tblName = data.tblName.clone();
+        self.oamMem = data.oamMem.clone();
     }
 
     #[inline]

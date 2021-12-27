@@ -1,7 +1,9 @@
 #![allow(non_snake_case)]
 #![allow(warnings)]
 
+use std::convert::TryFrom;
 use crate::mappers::mapper::{MirrorType, Mapper};
+use crate::save_load::{Mapper0Data, MapperData};
 
 pub struct Mapper0 {
     numPrgBanks: u8,
@@ -74,4 +76,25 @@ impl Mapper for Mapper0 {
     fn clearIrq(&mut self) -> () {}
 
     fn cycleIrqCounter(&mut self) -> () {}
+
+    fn saveState(&self) -> MapperData {
+        MapperData::M0(
+            Mapper0Data {
+                numPrgBanks: self.numPrgBanks,
+                numChrBanks: self.numChrBanks,
+                mirrorType: self.mirrorType as u8
+            }
+        )
+    }
+
+    fn loadState(&mut self, data: &MapperData) -> () {
+        match data {
+            MapperData::M0(data) => {
+                self.mirrorType = MirrorType::try_from(data.mirrorType).unwrap();
+                self.numChrBanks = data.numChrBanks;
+                self.numPrgBanks = data.numPrgBanks;
+            }
+            _ => { panic!("Wrong mirror type") }
+        }
+    }
 }

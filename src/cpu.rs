@@ -15,6 +15,7 @@ use std::any::Any;
 use std::fs::File;
 use std::io::Write;
 use crate::opcode_info::OpCode::BRK;
+use crate::save_load::{BusData, CpuData, CpuFlagData};
 
 const CARRY_POS: u8 = 0;
 const ZERO_POS: u8 = 1;
@@ -89,9 +90,6 @@ pub struct Cpu<'a> {
     oamPage: u16,
     oamCycles: u16,
 
-    // debug
-    log: File,
-    counter: u16,
 }
 
 impl<'a> Clocked for Cpu<'a> {
@@ -167,8 +165,6 @@ impl<'a> Cpu<'a> {
             oamByte: 0,
             oamPage: 0,
             oamCycles: 0,
-            log: File::create("log.txt").unwrap(),
-            counter: 0,
             isEvenCycle: false,
         };
 
@@ -180,6 +176,72 @@ impl<'a> Cpu<'a> {
         self.stkPointer = self.stkPointer.wrapping_sub(3);
         self.setFlags(0x24);
         self.pgmCounter = self.readMem16(0xFFFC);
+    }
+
+    pub fn saveState(&self) -> CpuData {
+        CpuData {
+            regA: self.regA,
+            regY: self.regY,
+            regX: self.regX,
+            pgmCounter: self.pgmCounter,
+            stkPointer: self.stkPointer,
+            flags: CpuFlagData {
+                carry: self.flags.carry,
+                zero: self.flags.zero,
+                interrupt: self.flags.interrupt,
+                decimal: self.flags.decimal,
+                brk: self.flags.brk,
+                unused: self.flags.unused,
+                overflow: self.flags.overflow,
+                negative: self.flags.negative
+            },
+            waitCycles: self.waitCycles,
+            isEvenCycle: self.isEvenCycle,
+            triggerNmi: self.triggerNmi,
+            triggerIrq: self.triggerIrq,
+            isOamTransfer: self.isOamTransfer,
+            isOamStarted: self.isOamStarted,
+            oamByte: self.oamByte,
+            oamPage: self.oamPage,
+            oamCycles: self.oamCycles
+        }
+    }
+
+    pub fn loadState(&mut self, data: &CpuData) -> () {
+        self.regA = data.regA;
+        self.regY = data.regY;
+        self.regX = data.regX;
+        self.pgmCounter = data.pgmCounter;
+        self.stkPointer = data.stkPointer;
+        self.flags = Flags {
+            carry: data.flags.carry,
+            zero: data.flags.zero,
+            interrupt: data.flags.interrupt,
+            decimal: data.flags.decimal,
+            brk: data.flags.brk,
+            unused: data.flags.unused,
+            overflow: data.flags.overflow,
+            negative: data.flags.negative
+        };
+        self.waitCycles = data.waitCycles;
+        self.isEvenCycle = data.isEvenCycle;
+        self.triggerNmi = data.triggerNmi;
+        self.triggerIrq = data.triggerIrq;
+        self.isOamTransfer = data.isOamTransfer;
+        self.isOamStarted = data.isOamStarted;
+        self.oamByte = data.oamByte;
+        self.oamPage = data.oamPage;
+        self.oamCycles = data.oamCycles;
+    }
+
+    pub fn saveBusState(&self) -> BusData {
+        BusData {
+            cpuMem: self.memory.borrow().copyCpuMem()
+        }
+    }
+
+    pub fn loadBusState(&mut self, data: &BusData) -> () {
+        self.memory.borrow_mut().loadCpuMem(&data.cpuMem);
     }
 
     #[inline]

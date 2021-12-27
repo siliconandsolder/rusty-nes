@@ -2,18 +2,21 @@
 #![allow(warnings)]
 
 use crate::mappers::mapper::MirrorType;
+use num_enum::TryFromPrimitive;
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[repr(u8)]
+#[derive(Debug, Copy, Clone, PartialEq, TryFromPrimitive)]
 pub enum PrgMode {
-    Switch32,
-    FixFirstBank,
-    FixLastBank
+    Switch32 = 0,
+    FixFirstBank = 1,
+    FixLastBank = 2
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[repr(u8)]
+#[derive(Debug, Copy, Clone, PartialEq, TryFromPrimitive)]
 pub enum ChrMode {
-    EightKilo,
-    FourKilo,
+    EightKilo = 0,
+    FourKilo = 1,
 }
 
 pub struct ControlRegister {
@@ -86,5 +89,9 @@ impl ControlRegister {
 
     pub fn getChrMode(&self) -> ChrMode {
         return self.chrMode;
+    }
+
+    pub fn getRegisterValue(&self) -> u8 {
+        return self.registerValue;
     }
 }
