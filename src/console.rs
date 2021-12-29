@@ -25,6 +25,7 @@ use self::sdl2::audio::AudioSpecDesired;
 use sdl2::image::{InitFlag, LoadTexture};
 use self::sdl2::mouse::SystemCursor::No;
 use std::process::exit;
+use sdl2::render::Texture;
 use self::sdl2::event::Event;
 use self::sdl2::keyboard::Keycode;
 use self::sdl2::render::{Canvas, WindowCanvas};
@@ -140,6 +141,12 @@ impl<'a> Console<'a> {
                     self.apu.clone(),
                     self.cartridge.clone())
                 }
+                Event::KeyDown { keycode: Some(Keycode::D), .. } => { SaveState::load(
+                    self.cpu.clone(),
+                    self.ppu.clone(),
+                    self.apu.clone(),
+                    self.cartridge.clone())
+                }
                 _ => {}
             }
         }
@@ -157,6 +164,12 @@ impl<'a> Console<'a> {
             self.canvas.borrow_mut().window()
         ).unwrap();
     }
+
+    fn drawFrame(&self, texture: &Texture<'a>) -> () {
+        self.canvas.borrow_mut().clear();
+        self.canvas.borrow_mut().copy(texture, None, None).unwrap();
+        self.canvas.borrow_mut().present();
+    }
 }
 
 impl<'a> Clocked for Console<'a> {
@@ -170,10 +183,16 @@ impl<'a> Clocked for Console<'a> {
         'game: loop {
 
             // one frame (approximately)
-            for i in 0..29781 {
-                self.ppu.borrow_mut().cycle();
-                self.ppu.borrow_mut().cycle();
-                self.ppu.borrow_mut().cycle();
+            for _ in 0..29781 {
+
+                for _ in 0..3 {
+                    match self.ppu.borrow_mut().cycleAndPrepareTexture() {
+                        None => {}
+                        Some(texture) => {
+                            self.drawFrame(texture)
+                        }
+                    }
+                }
 
                 self.cpu.borrow_mut().cycle();
                 self.apu.borrow_mut().cycle();

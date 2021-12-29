@@ -33,6 +33,11 @@ const CYCLES_PER_FRAME: u32 = 89342;
 const PIXEL_WIDTH: u32 = 256;
 const PIXEL_HEIGHT: u32 = 240;
 
+enum Frame {
+    Ready,
+    NotReady
+}
+
 struct TextureManager<'a> {
     textureCreator: TextureCreator<WindowContext>,
     texture: Option<Texture<'a>>,
@@ -153,10 +158,10 @@ pub struct Ppu<'a> {
     ppuBus: PpuBus,
 
     // SDL pixels (rectangles)
-    canvas: Rc<RefCell<WindowCanvas>>,
     textureManager: TextureManager<'a>,
     vPixelColours: Vec<u8>,
     vPixelPalette: Vec<u8>,
+    frame: Frame
 }
 
 impl<'a> Clocked for Ppu<'a> {
@@ -525,10 +530,10 @@ impl<'a> Ppu<'a> {
             fSprZero: 0,
             dataBus: mem,
             ppuBus: ppuBus,
-            canvas: canvas,
             textureManager: textureManager,
             vPixelColours: vec![0; (PIXEL_WIDTH * PIXEL_HEIGHT * 3) as usize],
             vPixelPalette: vec![0; (PIXEL_WIDTH * PIXEL_HEIGHT) as usize],
+            frame: Frame::NotReady
         }
     }
 
@@ -853,9 +858,20 @@ impl<'a> Ppu<'a> {
         }
 
         self.textureManager.updateTexture(self.vPixelColours.as_slice());
-        self.canvas.borrow_mut().clear();
-        self.canvas.borrow_mut().copy(self.textureManager.getTextureRef(), None, None).unwrap();
-        self.canvas.borrow_mut().present();
+        self.frame = Frame::Ready;
+    }
+
+    pub fn cycleAndPrepareTexture(&mut self) -> Option<&Texture<'a>> {
+        self.cycle();
+        return match self.frame {
+            Frame::Ready => {
+                self.frame = Frame::NotReady;
+                Some(self.textureManager.getTextureRef())
+            }
+            Frame::NotReady => {
+                None
+            }
+        }
     }
 
     fn horizontalFlipper(&self, mut byte: u8) -> u8 {

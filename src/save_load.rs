@@ -50,7 +50,16 @@ impl SaveState {
         apu: Rc<RefCell<Apu>>,
         cart: Rc<RefCell<Cartridge>>,
     ) -> () {
-
+        let saveFile = fs::read("./save.json").unwrap();
+        let data: SaveState = serde_json::from_slice(saveFile.as_slice()).unwrap();
+        
+        cart.borrow_mut().loadState(&data.cart);
+        cpu.borrow_mut().loadState(&data.cpu);
+        cpu.borrow_mut().loadBusState(&data.dataBus);
+        ppu.borrow_mut().loadState(&data.ppu);
+        ppu.borrow_mut().loadBusState(&data.ppuBus);
+        apu.borrow_mut().loadState(&data.apu);
+        cart.borrow_mut().loadMapperState(&data.mapper);
     }
 }
 
