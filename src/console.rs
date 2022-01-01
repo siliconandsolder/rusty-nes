@@ -25,7 +25,10 @@ use self::sdl2::audio::AudioSpecDesired;
 use sdl2::image::{InitFlag, LoadTexture};
 use self::sdl2::mouse::SystemCursor::No;
 use std::process::exit;
-use sdl2::render::Texture;
+use sdl2::rect::Rect;
+use sdl2::render::{Texture, TextureCreator};
+use sdl2::ttf::{Font, Sdl2TtfContext};
+use sdl2::video::WindowContext;
 use self::sdl2::event::Event;
 use self::sdl2::keyboard::Keycode;
 use self::sdl2::render::{Canvas, WindowCanvas};
@@ -41,10 +44,53 @@ const AUDIO_HERTZ_PER_SAMPLE: f64 = 1.0 / 44100.0;
 
 const NANO_PER_FRAME: u128 = ((1.0 / 60.0) * 1000.0 * 1000000.0) as u128;
 
-pub struct Console<'a> {
+struct MsgFont<'a, 'b> {
+    ttfContext: Sdl2TtfContext,
+    font: Option<Font<'a, 'b>>,
+    msgBox: Rect,
+    textureCreator: TextureCreator<WindowContext>,
+    texture: Option<Texture<'a>>
+}
+
+impl<'a, 'b> MsgFont<'a, 'b> {
+    fn new(creator: TextureCreator<WindowContext>) -> Self {
+        MsgFont {
+            ttfContext: sdl2::ttf::init().unwrap(),
+            font: None,
+            msgBox: Rect::new(50, 600, 100, 35),
+            textureCreator: creator,
+            texture: None
+        }
+    }
+
+    fn generateTexture(&mut self) -> () {
+        self.font = Some(self.ttfContext.load_font("./nes.ttf", 128).unwrap());
+        let surface = self.font.as_ref().unwrap().render("HELP").solid(Color::RGB(255, 255, 255)).unwrap();
+        self.texture = Some(self.textureCreator.create_texture_from_surface(surface).unwrap());
+    }
+
+    fn updateMsgTexture(&mut self, msg: &str) -> () {
+        if self.texture.is_none() {
+            self.generateTexture();
+        }
+        let surface = self.font.as_ref().unwrap().render(msg).solid(Color::RGB(255, 255, 255)).unwrap();
+        self.texture.as_mut().unwrap().update(self.msgBox, &surface.without_lock().unwrap(), (surface.width() * 3) as usize);
+    }
+
+    fn getTexture(&self) -> Option<&Texture<'a>> {
+        return self.texture.as_ref();
+    }
+
+    fn getMsgBox(&self) -> &Rect {
+        return &self.msgBox;
+    }
+}
+
+pub struct Console<'a, 'b> {
     canvas: Rc<RefCell<WindowCanvas>>,
     audioSystem: Rc<RefCell<AudioSubsystem>>,
     eventPump: Rc<RefCell<EventPump>>,
+    msgBox: MsgFont<'a, 'b>,
     cpu: Rc<RefCell<Cpu<'a>>>,
     ppu: Rc<RefCell<Ppu<'a>>>,
     apu: Rc<RefCell<Apu<'a>>>,
@@ -52,7 +98,7 @@ pub struct Console<'a> {
     cartridge: Rc<RefCell<Cartridge>>,
 }
 
-impl<'a> Console<'a> {
+impl<'a, 'b> Console<'a, 'b> {
     pub fn new(game: Option<&str>) -> Self {
 
         // sdl setup
@@ -86,6 +132,8 @@ impl<'a> Console<'a> {
         };
         let filePath = Path::new(fileName.as_str());
 
+
+
         let controller1 = Rc::new(RefCell::new(Controller::new(eventPump.clone())));
         let cartridge = Rc::new(RefCell::new(Cartridge::new(filePath)));
         let bus = Rc::new(RefCell::new(DataBus::new()));
@@ -99,10 +147,13 @@ impl<'a> Console<'a> {
         let ppu = Rc::new(RefCell::new(Ppu::new(bus.clone(), canvas.clone(), ppuBus)));
         bus.borrow_mut().attachPpu(ppu.clone());
 
+        let mut msgBox = MsgFont::new(canvas.borrow().texture_creator());
+
         Console {
             canvas,
             audioSystem,
             eventPump,
+            msgBox,
             cpu,
             ppu,
             apu,
@@ -165,32 +216,39 @@ impl<'a> Console<'a> {
         ).unwrap();
     }
 
-    fn drawFrame(&self, texture: &Texture<'a>) -> () {
+    fn renderFrame(&self, texture: &Texture<'a>) -> () {
         self.canvas.borrow_mut().clear();
         self.canvas.borrow_mut().copy(texture, None, None).unwrap();
+
+        if let Some(fontTexture) = self.msgBox.getTexture() {
+            self.canvas.borrow_mut().copy(fontTexture, None, Some(Rect::new(50, 600, 100, 35))).unwrap();
+        }
+
         self.canvas.borrow_mut().present();
+    }
+
+    fn updateMsgBox(&mut self, msg: &str) -> () {
+        self.msgBox.updateMsgTexture(msg);
     }
 }
 
-impl<'a> Clocked for Console<'a> {
+impl<'a, 'b> Clocked for Console<'a, 'b> {
     #[inline]
     fn cycle(&mut self) {
 
         let mut fps = FPSManager::new();
         fps.set_framerate(60);
         let mut audioTime: f64 = 0.0;
+        self.updateMsgBox("HELP");
 
         'game: loop {
 
             // one frame (approximately)
-            for _ in 0..29781 {
+            for _ in 0..=29781 {
 
                 for _ in 0..3 {
-                    match self.ppu.borrow_mut().cycleAndPrepareTexture() {
-                        None => {}
-                        Some(texture) => {
-                            self.drawFrame(texture)
-                        }
+                    if let Some(texture) = self.ppu.borrow_mut().cycleAndPrepareTexture() {
+                        self.renderFrame(texture)
                     }
                 }
 
