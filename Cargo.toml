@@ -2,17 +2,31 @@
 name = "rustynes"
 version = "0.2.0"
 authors = ["Ben Godin <bgodin1995@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
-num_enum = "0.4.3"
-rand = "0.7.3"
-log = "0.4.8"
-flume = "0.10.1"
-ndarray = "0.14.0"
+num_enum = "0.5.6"
+ndarray = "0.15.4"
+log = "0.4.14"
+flume = "0.10.10"
 lazy_static = "1.4.0"
 serde_derive = "1.0.132"
 serde_json = "1.0.73"
 serde = {version = "1.0.132", features = ["derive", "serde_derive"]}
 clap = {version = "2.33.3", features = ["yaml"]}
 sdl2 = {version = "0.35.1", default-features = false, features = ["gfx", "image", "ttf"]}
+
+wgpu = "0.12"
+image = "0.23"
+cgmath = "0.18"
+env_logger = "0.9"
+pollster = "0.2"
+rfd = "0.6.3"
+home = "0.5.3"
+
+pixels = "0.9.0"
+egui = "0.16.1"
+egui_wgpu_backend = "0.16.0"
+egui-winit = { version = "0.16", default-features = false, features = ["links"] }
+winit = "0.26"
+winit_input_helper = "0.11"

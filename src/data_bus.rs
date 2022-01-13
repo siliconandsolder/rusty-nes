@@ -4,7 +4,6 @@
 
 use std::rc::Rc;
 use std::cell::RefCell;
-use log::info;
 use crate::cpu::*;
 use crate::ppu::*;
 use crate::cartridge::*;
@@ -14,20 +13,20 @@ use crate::controller::Controller;
 use crate::clock::Clocked;
 use crate::apu::Apu;
 use sdl2::event::Event;
+use winit_input_helper::WinitInputHelper;
 
 // Split the buses in two. One for CPU-PPU intercommunication, one for PPU data reads and writes.
 
-pub struct DataBus<'a> {
+pub struct DataBus {
     cpuMem: Vec<u8>,
-
-    cpu: Option<Rc<RefCell<Cpu<'a>>>>,
-    ppu: Option<Rc<RefCell<Ppu<'a>>>>,
-    apu: Option<Rc<RefCell<Apu<'a>>>>,
+    cpu: Option<Rc<RefCell<Cpu>>>,
+    ppu: Option<Rc<RefCell<Ppu>>>,
+    apu: Option<Rc<RefCell<Apu>>>,
     cartridge: Option<Rc<RefCell<Cartridge>>>,
     controller1: Option<Rc<RefCell<Controller>>>,
 }
 
-impl<'a> DataBus<'a> {
+impl DataBus {
     pub fn new() -> Self {
         DataBus {
             cpuMem: vec![0; 0x0800],
@@ -39,15 +38,15 @@ impl<'a> DataBus<'a> {
         }
     }
 
-    pub fn attachPpu(&mut self, ppuRef: Rc<RefCell<Ppu<'a>>>) -> () {
+    pub fn attachPpu(&mut self, ppuRef: Rc<RefCell<Ppu>>) -> () {
         self.ppu = Some(ppuRef);
     }
 
-    pub fn attachCpu(&mut self, cpuRef: Rc<RefCell<Cpu<'a>>>) -> () {
+    pub fn attachCpu(&mut self, cpuRef: Rc<RefCell<Cpu>>) -> () {
         self.cpu = Some(cpuRef);
     }
 
-    pub fn attachApu(&mut self, apuRef: Rc<RefCell<Apu<'a>>>) {
+    pub fn attachApu(&mut self, apuRef: Rc<RefCell<Apu>>) {
         self.apu = Some(apuRef);
     }
 
@@ -120,8 +119,8 @@ impl<'a> DataBus<'a> {
         self.controller1.as_ref().unwrap().borrow_mut().cycle();
     }
 
-    pub fn setControllerEvents(&mut self, events: Vec<Event>) -> () {
-        self.controller1.as_ref().unwrap().borrow_mut().setEvents(events);
+    pub fn setControllerEvents(&mut self, input: WinitInputHelper) -> () {
+        self.controller1.as_ref().unwrap().borrow_mut().setEvents(input);
     }
 
     pub fn setDmcCpuStall(&mut self) -> () {

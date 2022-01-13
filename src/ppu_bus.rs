@@ -10,19 +10,23 @@ use crate::save_load::PpuBusData;
 pub struct PpuBus {
     tblPalette: Vec<u8>,
     tblName: Vec<u8>,
-    cart: Rc<RefCell<Cartridge>>,
+    cart: Option<Rc<RefCell<Cartridge>>>,
     oamMem: Vec<u8>,
 
 }
 
 impl PpuBus {
-    pub fn new(cartridge: Rc<RefCell<Cartridge>>) -> Self {
+    pub fn new() -> Self {
         PpuBus {
             tblPalette: vec![0; 0x0020],
             tblName: vec![0; 0x1000],
-            cart: cartridge,
+            cart: None,
             oamMem: vec![0; 0x0100],
         }
+    }
+
+    pub fn attachCartridge(&mut self, cart: Rc<RefCell<Cartridge>>) -> () {
+        self.cart = Some(cart);
     }
 
     pub fn saveState(&self) -> PpuBusData {
@@ -43,10 +47,10 @@ impl PpuBus {
     pub fn readPpuMem(&self, ref addr: u16) -> u8 {
         let adr = *addr & 0x3FFF;
         if adr < 0x2000 {
-            return self.cart.borrow_mut().ppuRead(adr);
+            return self.cart.as_ref().unwrap().borrow_mut().ppuRead(adr);
         }
         else if adr < 0x3F00 {
-            return match self.cart.borrow().getMirrorType() {
+            return match self.cart.as_ref().unwrap().borrow().getMirrorType() {
                 MirrorType::Horizontal => {
                     match adr {
                         a if a < 0x2800 => { self.tblName[(a & 0x03FF) as usize].clone() }
@@ -76,10 +80,10 @@ impl PpuBus {
     pub fn writePpuMem(&mut self, ref addr: u16, val: u8) -> () {
         let adr = *addr & 0x3FFF;
         if adr < 0x2000 {
-            return self.cart.borrow_mut().ppuWrite(adr, val);
+            return self.cart.as_ref().unwrap().borrow_mut().ppuWrite(adr, val);
         } else if adr < 0x3F00 {
 
-            match self.cart.borrow().getMirrorType() {
+            match self.cart.as_ref().unwrap().borrow().getMirrorType() {
                 MirrorType::Horizontal => {
                     match adr {
                         a if a < 0x2800 => { self.tblName[(a & 0x03FF) as usize] = val; }

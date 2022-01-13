@@ -11,3 +11,5 @@ pub mod apu;
 pub mod cartridge;
 pub mod mappers;
 pub mod console;
+pub mod gui;
+pub mod gui_commands;

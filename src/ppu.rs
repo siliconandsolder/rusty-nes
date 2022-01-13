@@ -4,20 +4,15 @@
 
 use std::rc::Rc;
 use std::cell::RefCell;
-use log::info;
 use crate::data_bus::DataBus;
 use crate::clock;
 use crate::clock::Clocked;
 use crate::palette::*;
-use sdl2::render::{WindowCanvas, Texture, TextureAccess, TextureCreator};
-use sdl2::pixels::{Color, PixelFormatEnum};
-use sdl2::rect::Rect;
 use crate::ppu_bus::PpuBus;
 use std::fs::File;
 use std::io::Write;
-use sdl2::mouse::SystemCursor::No;
-use sdl2::video::WindowContext;
 use std::borrow::Borrow;
+use crate::cartridge::Cartridge;
 use crate::save_load::{PpuBusData, PpuData};
 
 const SCANLINE_VISIBLE_MAX: u16 = 239;
@@ -38,43 +33,7 @@ enum Frame {
     NotReady
 }
 
-struct TextureManager<'a> {
-    textureCreator: TextureCreator<WindowContext>,
-    texture: Option<Texture<'a>>,
-}
-
-impl<'a> TextureManager<'a> {
-    pub fn new(textureCreator: TextureCreator<WindowContext>) -> Self {
-        let mut tm = TextureManager {
-            textureCreator,
-            texture: None,
-        };
-        tm.createTexture();
-        return tm;
-    }
-
-    pub fn createTexture(&mut self) -> () {
-        let tcp = &self.textureCreator as *const TextureCreator<WindowContext>;
-        let texture = unsafe { &*tcp }
-            .create_texture(
-                PixelFormatEnum::RGB24,
-                TextureAccess::Streaming,
-                PIXEL_WIDTH,
-                PIXEL_HEIGHT,
-            ).unwrap();
-        self.texture = Some(texture);
-    }
-
-    pub fn updateTexture(&mut self, pixelBytes: &[u8]) -> () {
-        self.texture.as_mut().unwrap().update(None, pixelBytes, (PIXEL_WIDTH * 3) as usize);
-    }
-
-    pub fn getTextureRef(&self) -> &Texture<'a> {
-        return self.texture.as_ref().unwrap();
-    }
-}
-
-pub struct Ppu<'a> {
+pub struct Ppu {
     cycle: u16,
     scanLine: u16,
 
@@ -154,17 +113,15 @@ pub struct Ppu<'a> {
     fSprOver: u8,
     fSprZero: u8,
 
-    dataBus: Rc<RefCell<DataBus<'a>>>,
+    dataBus: Rc<RefCell<DataBus>>,
     ppuBus: PpuBus,
 
-    // SDL pixels (rectangles)
-    textureManager: TextureManager<'a>,
     vPixelColours: Vec<u8>,
     vPixelPalette: Vec<u8>,
     frame: Frame
 }
 
-impl<'a> Clocked for Ppu<'a> {
+impl Clocked for Ppu {
     #[inline]
     fn cycle(&mut self) {
         let renderEnabled = self.fSprEnabled == 1 || self.fBckEnabled == 1;
@@ -478,10 +435,8 @@ impl<'a> Clocked for Ppu<'a> {
     }
 }
 
-impl<'a> Ppu<'a> {
-    pub fn new(mem: Rc<RefCell<DataBus<'a>>>, canvas: Rc<RefCell<WindowCanvas>>, ppuBus: PpuBus) -> Self {
-        let textureManager = TextureManager::new(canvas.borrow_mut().texture_creator());
-
+impl Ppu {
+    pub fn new(mem: Rc<RefCell<DataBus>>, ppuBus: PpuBus) -> Self {
         Ppu {
             cycle: 0,
             scanLine: 0,
@@ -530,7 +485,6 @@ impl<'a> Ppu<'a> {
             fSprZero: 0,
             dataBus: mem,
             ppuBus: ppuBus,
-            textureManager: textureManager,
             vPixelColours: vec![0; (PIXEL_WIDTH * PIXEL_HEIGHT * 3) as usize],
             vPixelPalette: vec![0; (PIXEL_WIDTH * PIXEL_HEIGHT) as usize],
             frame: Frame::NotReady
@@ -645,6 +599,10 @@ impl<'a> Ppu<'a> {
 
     pub fn loadBusState(&mut self, data: &PpuBusData) -> () {
         self.ppuBus.loadState(data);
+    }
+
+    pub fn attachCartridge(&mut self, cart: Rc<RefCell<Cartridge>>) -> () {
+        self.ppuBus.attachCartridge(cart);
     }
 
     pub fn readMem(&mut self, ref addr: u16) -> u8 {
@@ -857,16 +815,15 @@ impl<'a> Ppu<'a> {
             self.vPixelColours[(i * 3 + 2) as usize] = colour.blue;
         }
 
-        self.textureManager.updateTexture(self.vPixelColours.as_slice());
         self.frame = Frame::Ready;
     }
 
-    pub fn cycleAndPrepareTexture(&mut self) -> Option<&Texture<'a>> {
+    pub fn cycleAndPrepareTexture(&mut self) -> Option<&Vec<u8>> {
         self.cycle();
         return match self.frame {
             Frame::Ready => {
                 self.frame = Frame::NotReady;
-                Some(self.textureManager.getTextureRef())
+                Some(self.vPixelColours.as_ref())
             }
             Frame::NotReady => {
                 None

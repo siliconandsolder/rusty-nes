@@ -6,7 +6,7 @@ use std::cell::RefCell;
 use crate::data_bus::DataBus;
 use std::rc::Rc;
 
-pub struct DMC<'a> {
+pub struct DMC {
     pub enabled: bool,
     pub irqEnabled: bool,
     pub loopEnabled: bool,
@@ -21,12 +21,12 @@ pub struct DMC<'a> {
     pub sampleLength: u16,
     pub curSampleLength: u16,
     pub shift: u8,
-    pub dataBus: Rc<RefCell<DataBus<'a>>>,
+    pub dataBus: Rc<RefCell<DataBus>>,
 
 }
 
-impl<'a> DMC<'a> {
-    pub fn new(dataBus: Rc<RefCell<DataBus<'a>>>) -> Self {
+impl DMC {
+    pub fn new(dataBus: Rc<RefCell<DataBus>>) -> Self {
         DMC {
             enabled: false,
             irqEnabled: false,

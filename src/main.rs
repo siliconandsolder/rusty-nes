@@ -13,6 +13,7 @@ fn main() {
     let matches = App::from_yaml(yaml).get_matches();
 
     let rom = matches.value_of("ROM");
-    let mut console = Console::new(rom);
-    console.cycle();
+    //let rom = Some("./loz.nes");
+    let console = Console::new(rom);
+    console.run();
 }

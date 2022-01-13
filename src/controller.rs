@@ -8,23 +8,25 @@ use crate::clock::Clocked;
 use std::process::exit;
 use sdl2::keyboard::Keycode;
 use sdl2::event::Event;
+use winit::event::VirtualKeyCode;
+use winit_input_helper::WinitInputHelper;
 
 pub struct Controller {
-    eventPump: Rc<RefCell<EventPump>>,
+    //eventPump: Rc<RefCell<EventPump>>,
     controllerState: u8,
     controllerIdx: u8,
     strobe: bool,
-    events: Vec<Event>,
+    input: Option<WinitInputHelper>,
 }
 
 impl Controller {
-    pub fn new(eventPump: Rc<RefCell<EventPump>>) -> Self {
+    pub fn new() -> Self {
         Controller {
-            eventPump,
+            //eventPump,
             controllerState: 0,
             controllerIdx: 0,
             strobe: false,
-            events: vec![]
+            input: None
         }
     }
 
@@ -49,8 +51,8 @@ impl Controller {
         }
     }
 
-    pub fn setEvents(&mut self, events: Vec<Event>) -> () {
-        self.events = events;
+    pub fn setEvents(&mut self, input: WinitInputHelper) -> () {
+        self.input = Some(input);
     }
 }
 
@@ -65,30 +67,99 @@ const RGT_POS: u8 = 7;
 
 impl Clocked for Controller {
     fn cycle(&mut self) {
-        for event in self.events.as_slice() {
-            match *event {
-                Event::Quit { .. } => { exit(0); }
 
-                Event::KeyDown { keycode: Some(Keycode::Z), .. } => { self.controllerState |= (1 << A_POS); }
-                Event::KeyDown { keycode: Some(Keycode::X), .. } => { self.controllerState |= (1 << B_POS); }
-                Event::KeyDown { keycode: Some(Keycode::Left), .. } => { self.controllerState |= (1 << LFT_POS); }
-                Event::KeyDown { keycode: Some(Keycode::Right), .. } => { self.controllerState |= (1 << RGT_POS); }
-                Event::KeyDown { keycode: Some(Keycode::Up), .. } => { self.controllerState |= (1 << UP_POS); }
-                Event::KeyDown { keycode: Some(Keycode::Down), .. } => { self.controllerState |= (1 << DWN_POS); }
-                Event::KeyDown { keycode: Some(Keycode::Return), .. } => { self.controllerState |= (1 << STR_POS); }
-                Event::KeyDown { keycode: Some(Keycode::RShift), .. } => { self.controllerState |= (1 << SEL_POS); }
+        // if-block time!
+        if let Some(key) = &self.input {
+            if key.key_pressed(VirtualKeyCode::Z) {
+                self.controllerState |= (1 << A_POS);
+            }
 
-                Event::KeyUp { keycode: Some(Keycode::Z), .. } => { self.controllerState &= !(1 << A_POS); }
-                Event::KeyUp { keycode: Some(Keycode::X), .. } => { self.controllerState &= !(1 << B_POS); }
-                Event::KeyUp { keycode: Some(Keycode::Left), .. } => { self.controllerState &= !(1 << LFT_POS); }
-                Event::KeyUp { keycode: Some(Keycode::Right), .. } => { self.controllerState &= !(1 << RGT_POS); }
-                Event::KeyUp { keycode: Some(Keycode::Up), .. } => { self.controllerState &= !(1 << UP_POS); }
-                Event::KeyUp { keycode: Some(Keycode::Down), .. } => { self.controllerState &= !(1 << DWN_POS); }
-                Event::KeyUp { keycode: Some(Keycode::Return), .. } => { self.controllerState &= !(1 << STR_POS); }
-                Event::KeyUp { keycode: Some(Keycode::RShift), .. } => { self.controllerState &= !(1 << SEL_POS); }
+            if key.key_pressed(VirtualKeyCode::X) {
+                self.controllerState |= (1 << B_POS);
+            }
 
-                _ => {}
+            if key.key_pressed(VirtualKeyCode::Left) {
+                self.controllerState |= (1 << LFT_POS);
+            }
+
+            if key.key_pressed(VirtualKeyCode::Right) {
+                self.controllerState |= (1 << RGT_POS);
+            }
+
+            if key.key_pressed(VirtualKeyCode::Up) {
+                self.controllerState |= (1 << UP_POS);
+            }
+
+            if key.key_pressed(VirtualKeyCode::Down) {
+                self.controllerState |= (1 << DWN_POS);
+            }
+
+            if key.key_pressed(VirtualKeyCode::Return) {
+                self.controllerState |= (1 << STR_POS);
+            }
+
+            if key.key_pressed(VirtualKeyCode::RShift) {
+                self.controllerState |= (1 << SEL_POS);
+            }
+
+
+            if key.key_released(VirtualKeyCode::Z) {
+                self.controllerState &= !(1 << A_POS);
+            }
+
+            if key.key_released(VirtualKeyCode::X) {
+                self.controllerState &= !(1 << B_POS);
+            }
+
+            if key.key_released(VirtualKeyCode::Left) {
+                self.controllerState &= !(1 << LFT_POS);
+            }
+
+            if key.key_released(VirtualKeyCode::Right) {
+                self.controllerState &= !(1 << RGT_POS);
+            }
+
+            if key.key_released(VirtualKeyCode::Up) {
+                self.controllerState &= !(1 << UP_POS);
+            }
+
+            if key.key_released(VirtualKeyCode::Down) {
+                self.controllerState &= !(1 << DWN_POS);
+            }
+
+            if key.key_released(VirtualKeyCode::Return) {
+                self.controllerState &= !(1 << STR_POS);
+            }
+
+            if key.key_released(VirtualKeyCode::RShift) {
+                self.controllerState &= !(1 << SEL_POS);
             }
         }
+
+        // for event in self.events.as_slice() {
+        //     match *event {
+        //         Event::Quit { .. } => { exit(0); }
+        //
+        //         Event::KeyDown { keycode: Some(Keycode::Z), .. } => { self.controllerState |= (1 << A_POS); }
+        //         Event::KeyDown { keycode: Some(Keycode::X), .. } => { self.controllerState |= (1 << B_POS); }
+        //         Event::KeyDown { keycode: Some(Keycode::Left), .. } => { self.controllerState |= (1 << LFT_POS); }
+        //         Event::KeyDown { keycode: Some(Keycode::Right), .. } => { self.controllerState |= (1 << RGT_POS); }
+        //         Event::KeyDown { keycode: Some(Keycode::Up), .. } => { self.controllerState |= (1 << UP_POS); }
+        //         Event::KeyDown { keycode: Some(Keycode::Down), .. } => { self.controllerState |= (1 << DWN_POS); }
+        //         Event::KeyDown { keycode: Some(Keycode::Return), .. } => { self.controllerState |= (1 << STR_POS); }
+        //         Event::KeyDown { keycode: Some(Keycode::RShift), .. } => { self.controllerState |= (1 << SEL_POS); }
+        //
+        //         Event::KeyUp { keycode: Some(Keycode::Z), .. } => { self.controllerState &= !(1 << A_POS); }
+        //         Event::KeyUp { keycode: Some(Keycode::X), .. } => { self.controllerState &= !(1 << B_POS); }
+        //         Event::KeyUp { keycode: Some(Keycode::Left), .. } => { self.controllerState &= !(1 << LFT_POS); }
+        //         Event::KeyUp { keycode: Some(Keycode::Right), .. } => { self.controllerState &= !(1 << RGT_POS); }
+        //         Event::KeyUp { keycode: Some(Keycode::Up), .. } => { self.controllerState &= !(1 << UP_POS); }
+        //         Event::KeyUp { keycode: Some(Keycode::Down), .. } => { self.controllerState &= !(1 << DWN_POS); }
+        //         Event::KeyUp { keycode: Some(Keycode::Return), .. } => { self.controllerState &= !(1 << STR_POS); }
+        //         Event::KeyUp { keycode: Some(Keycode::RShift), .. } => { self.controllerState &= !(1 << SEL_POS); }
+        //
+        //         _ => {}
+        //     }
+        // }
     }
 }

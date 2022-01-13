@@ -14,7 +14,6 @@ use std::convert::TryFrom;
 use std::any::Any;
 use std::fs::File;
 use std::io::Write;
-use crate::opcode_info::OpCode::BRK;
 use crate::save_load::{BusData, CpuData, CpuFlagData};
 
 const CARRY_POS: u8 = 0;
@@ -54,7 +53,7 @@ impl Flags {
 
 const STACK_IDX: u16 = 0x0100;
 
-pub struct Cpu<'a> {
+pub struct Cpu {
     // registers
     regA: u8,
     regY: u8,
@@ -64,7 +63,7 @@ pub struct Cpu<'a> {
     pgmCounter: u16,
     stkPointer: u8,
 
-    memory: Rc<RefCell<DataBus<'a>>>,
+    memory: Rc<RefCell<DataBus>>,
 
     // flag(s)
     flags: Flags,
@@ -92,7 +91,7 @@ pub struct Cpu<'a> {
 
 }
 
-impl<'a> Clocked for Cpu<'a> {
+impl Clocked for Cpu {
     #[inline]
     fn cycle(&mut self) {
         self.isEvenCycle = !self.isEvenCycle;
@@ -140,14 +139,8 @@ impl<'a> Clocked for Cpu<'a> {
     }
 }
 
-impl<'a> Cpu<'a> {
+impl Cpu {
     pub fn new(memory: Rc<RefCell<DataBus>>) -> Cpu {
-
-        // load reset vector into program counter
-        let lo = memory.borrow().readCpuMem(0xFFFC);
-        let hi = memory.borrow().readCpuMem(0xFFFD);
-        let prgC = ((hi as u16) << 8) | (lo as u16);
-
 
         let mut cpu = Cpu {
             regA: 0,
@@ -155,7 +148,7 @@ impl<'a> Cpu<'a> {
             regY: 0,
             stkPointer: 0xFD,
             memory: memory,
-            pgmCounter: prgC,
+            pgmCounter: 0,
             flags: Flags::new(),
             waitCycles: 0,
             triggerIrq: false,
@@ -170,6 +163,13 @@ impl<'a> Cpu<'a> {
 
         cpu.setFlags(0x24);
         return cpu;
+    }
+
+    pub fn init(&mut self) -> () {
+        // load reset vector into program counter
+        let lo = self.memory.borrow().readCpuMem(0xFFFC);
+        let hi = self.memory.borrow().readCpuMem(0xFFFD);
+        self.pgmCounter = ((hi as u16) << 8) | (lo as u16);
     }
 
     pub fn reset(&mut self) -> () {

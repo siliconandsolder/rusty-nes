@@ -8,7 +8,6 @@ use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 
 use lazy_static::lazy_static;
-use ndarray::{Array, array, Array1, Array2};
 
 use audio::Audio;
 
@@ -39,13 +38,13 @@ pub mod callback;
 10-1F  12, 16, 24, 18, 48, 20, 96, 22, 192, 24, 72, 26, 16, 28, 32, 30
 */
 
-pub struct Apu<'a> {
+pub struct Apu {
     frame: u16,
     pulse1: Pulse,
     pulse2: Pulse,
     triangle: Triangle,
-    dmc: DMC<'a>,
-    dataBus: Rc<RefCell<DataBus<'a>>>,
+    dmc: DMC,
+    dataBus: Rc<RefCell<DataBus>>,
     noise: Noise,
     fiveStep: bool,
     frameInterrupt: bool,
@@ -57,8 +56,8 @@ pub struct Apu<'a> {
     tndTable: Vec<f32>,
 }
 
-impl<'a> Apu<'a> {
-    pub fn new(dataBus: Rc<RefCell<DataBus<'a>>>, audioSystem: Rc<RefCell<AudioSubsystem>>) -> Self {
+impl Apu {
+    pub fn new(dataBus: Rc<RefCell<DataBus>>, audioSystem: Rc<RefCell<AudioSubsystem>>) -> Self {
         /*
         table:  .byte 10, 254, 20,  2, 40,  4, 80,  6
     .byte 160,  8, 60, 10, 14, 12, 26, 14
@@ -490,7 +489,7 @@ impl<'a> Apu<'a> {
     }
 }
 
-impl<'a> Clocked for Apu<'a> {
+impl Clocked for Apu {
     fn cycle(&mut self) {
         match self.frame {
             STEP_ONE_CYCLE => {

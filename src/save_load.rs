@@ -3,6 +3,7 @@
 
 use std::cell::RefCell;
 use std::fs;
+use std::path::PathBuf;
 use std::rc::Rc;
 use serde::{Serialize, Deserialize};
 use crate::apu::Apu;
@@ -25,6 +26,7 @@ pub struct SaveState {
 
 impl SaveState {
     pub fn save(
+        path: PathBuf,
         cpu: Rc<RefCell<Cpu>>,
         ppu: Rc<RefCell<Ppu>>,
         apu: Rc<RefCell<Apu>>,
@@ -41,16 +43,17 @@ impl SaveState {
         };
 
         let result = serde_json::to_string(&saveState).unwrap();
-        fs::write("./save.json", result).unwrap()
+        fs::write(path.as_path(), result).unwrap()
     }
 
     pub fn load(
+        path: PathBuf,
         cpu: Rc<RefCell<Cpu>>,
         ppu: Rc<RefCell<Ppu>>,
         apu: Rc<RefCell<Apu>>,
         cart: Rc<RefCell<Cartridge>>,
     ) -> () {
-        let saveFile = fs::read("./save.json").unwrap();
+        let saveFile = fs::read(path.as_path()).unwrap();
         let data: SaveState = serde_json::from_slice(saveFile.as_slice()).unwrap();
         
         cart.borrow_mut().loadState(&data.cart);
