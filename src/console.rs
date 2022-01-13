@@ -21,6 +21,8 @@ use pixels::{Pixels, SurfaceTexture};
 use rfd::FileDialog;
 use winit::dpi::LogicalSize;
 use winit::event::{Event, VirtualKeyCode};
+use winit::event::Event::WindowEvent;
+use winit::event::WindowEvent::CloseRequested;
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::platform::run_return::EventLoopExtRunReturn;
 use winit::window::{Window, WindowBuilder};
@@ -31,14 +33,14 @@ use crate::gui_commands::GuiCommands;
 const CPU_HERTZ_PER_CYCLE: f64 = 1.0 / 1789773.0;
 const AUDIO_HERTZ_PER_SAMPLE: f64 = 1.0 / 44100.0;
 
-const SCREEN_WIDTH: u32 = SCREEN_WIDTH;
+const SCREEN_WIDTH: u32 = 768;
 const SCREEN_HEIGHT: u32 = 720;
 
-const PIXEL_WIDTH: u32 = PIXEL_WIDTH;
-const PIXEL_HEIGHT: u32 = PIXEL_HEIGHT;
+const PIXEL_WIDTH: u32 = 256;
+const PIXEL_HEIGHT: u32 = 240;
 
 
-enum GameState {
+pub enum GameState {
     NotLoaded,
     Loaded
 }
@@ -128,19 +130,7 @@ impl Console {
     }
 
 
-    fn checkInputEvents(&mut self, input: WinitInputHelper, flow: &mut ControlFlow) -> () {
-
-        if input.key_pressed(VirtualKeyCode::Escape) {
-            self.returnToSplashScreen();
-        }
-
-        if input.quit() {
-            *flow = ControlFlow::Exit;
-        }
-    }
-
     fn returnToSplashScreen(&mut self) -> () {
-        *self = Console::assembleConsole(self.audioSystem.clone(), None);
     }
 
     pub fn run(mut self) {
@@ -148,6 +138,8 @@ impl Console {
         //let mut fps = FPSManager::new();
         //fps.set_framerate(60);
         let mut audioTime: f64 = 0.0;
+        let mut canPressEscape: bool = true;
+
         let mut input = WinitInputHelper::new();
         let imgBytes = include_bytes!("./resources/rustynes_splash_screen.png");
         let bytes = image::load_from_memory(imgBytes).unwrap().to_rgb8().into_raw();
@@ -167,8 +159,11 @@ impl Console {
                         pixel[3] = 0xFF;
                     }
 
-                    if input.update(&event) && (input.key_pressed(VirtualKeyCode::Escape) || input.quit()) {
-                        *controlFlow = ControlFlow::Exit;
+                    if input.update(&event) {
+                        if canPressEscape && input.key_pressed(VirtualKeyCode::Escape) {
+                            canPressEscape = false;
+                            *controlFlow = ControlFlow::Exit;
+                        }
                     }
 
                     self.window.request_redraw();
@@ -201,8 +196,18 @@ impl Console {
                     if input.update(&event) {
                         self.bus.borrow_mut().setControllerEvents(input.clone());
                         self.bus.borrow_mut().getControllerInput();
-                        self.checkInputEvents(input.clone(), controlFlow);
+
+                        if canPressEscape && input.key_pressed(VirtualKeyCode::Escape) {
+                            canPressEscape = false;
+                            self = Console::assembleConsole(self.audioSystem.clone(), None);
+                        }
                     }
+                }
+            }
+
+            if input.update(&event) {
+                if input.key_released(VirtualKeyCode::Escape) {
+                    canPressEscape = true;
                 }
             }
 
@@ -214,6 +219,8 @@ impl Console {
                     *controlFlow = ControlFlow::Poll;
                 }
                 Event::WindowEvent { event, .. } => {
+
+
                     self.gui.handleEvent(&event);
                     match *self.guiCommands.borrow() {
                         GuiCommands::Default => {}
@@ -262,6 +269,13 @@ impl Console {
                         }
                     }
                     *self.guiCommands.borrow_mut() = GuiCommands::Default;
+
+                    match event {
+                        CloseRequested => {
+                            *controlFlow = ControlFlow::Exit;
+                        }
+                        _ => {}
+                    }
                 }
                 Event::RedrawRequested(_) => {
 
@@ -277,6 +291,8 @@ impl Console {
                 }
                 _ => {}
             }
+
+
         });
     }
 }
