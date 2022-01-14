@@ -134,6 +134,17 @@ impl Console {
     fn returnToSplashScreen(&mut self) -> () {
     }
 
+    fn copyBufferToPixels(&mut self, buffer: &Vec<u8>) -> () {
+        let frame = self.pixels.get_frame();
+        for (idx, pixel) in frame.chunks_exact_mut(4).into_iter().enumerate() {
+            let realIdx = idx * 3;
+            pixel[0] = buffer[realIdx];
+            pixel[1] = buffer[realIdx + 1];
+            pixel[2] = buffer[realIdx + 2];
+            pixel[3] = 0xFF;
+        }
+    }
+
     pub fn run(mut self) {
 
         //let mut fps = FPSManager::new();
@@ -148,83 +159,62 @@ impl Console {
         let mut pixelBuffer: Vec<u8> = vec![0; 256 * 240 * 3];
         pixelBuffer = imgBytes.clone();
 
-        let frame = self.pixels.get_frame();
-        for (idx, pixel) in frame.chunks_exact_mut(4).into_iter().enumerate() {
-            let realIdx = idx * 3;
-            pixel[0] = pixelBuffer[realIdx];
-            pixel[1] = pixelBuffer[realIdx + 1];
-            pixel[2] = pixelBuffer[realIdx + 2];
-            pixel[3] = 0xFF;
-        }
+        self.copyBufferToPixels(&pixelBuffer);
         //self.updateMsgBox("HELP");
 
         self.eventLoop.take().unwrap().run(move |event, _, controlFlow | {
 
-            let state = &self.gameState;
-            match *state {
-                GameState::NotLoaded => {
-                    self.window.request_redraw();
+            if input.update(&event) {
+                let state = &self.gameState;
+                match *state {
+                    GameState::NotLoaded => {
 
-                    if input.update(&event) {
                         if canPressEscape && input.key_pressed(VirtualKeyCode::Escape) {
                             canPressEscape = false;
                             *controlFlow = ControlFlow::Exit;
                         }
-                    }
 
-                    self.window.request_redraw();
-                }
-                GameState::Loaded => {
-                    for _ in 0..3 {
-                        if let Some(buffer) = self.ppu.borrow_mut().cycleAndPrepareTexture().cloned() {
-                            pixelBuffer = buffer;
-                            self.window.request_redraw();
+                        self.window.request_redraw();
+                    }
+                    GameState::Loaded => {
+                        
+                        for _ in 0..29781 {
+                            for _ in 0..3 {
+                                if let Some(buffer) = self.ppu.borrow_mut().cycleAndPrepareTexture().cloned() {
+                                    pixelBuffer = buffer;
+                                }
+                            }
+    
+                            self.cpu.borrow_mut().cycle();
+                            self.apu.borrow_mut().cycle();
+    
+                            audioTime += CPU_HERTZ_PER_CYCLE;
+                            if audioTime >= AUDIO_HERTZ_PER_SAMPLE {
+                                audioTime -= AUDIO_HERTZ_PER_SAMPLE;
+                                self.apu.borrow_mut().addSampleToBuffer();
+                            }
                         }
-                    }
 
-                    self.cpu.borrow_mut().cycle();
-                    self.apu.borrow_mut().cycle();
-
-                    audioTime += CPU_HERTZ_PER_CYCLE;
-                    if audioTime >= AUDIO_HERTZ_PER_SAMPLE {
-                        audioTime -= AUDIO_HERTZ_PER_SAMPLE;
-                        self.apu.borrow_mut().addSampleToBuffer();
-                    }
-
-                    if input.update(&event) {
                         self.bus.borrow_mut().setControllerEvents(input.clone());
                         self.bus.borrow_mut().getControllerInput();
 
                         if canPressEscape && input.key_pressed(VirtualKeyCode::Escape) {
                             canPressEscape = false;
                             pixelBuffer = imgBytes.clone();
-                            let frame = self.pixels.get_frame();
-                            for (idx, pixel) in frame.chunks_exact_mut(4).into_iter().enumerate() {
-                                let realIdx = idx * 3;
-                                pixel[0] = pixelBuffer[realIdx];
-                                pixel[1] = pixelBuffer[realIdx + 1];
-                                pixel[2] = pixelBuffer[realIdx + 2];
-                                pixel[3] = 0xFF;
-                            }
+                            self.copyBufferToPixels(&pixelBuffer);
                             self = Console::assembleConsole(self.audioSystem.clone(), None);
                         }
+
+                        self.window.request_redraw();
                     }
                 }
-            }
 
-            if input.update(&event) {
                 if input.key_released(VirtualKeyCode::Escape) {
                     canPressEscape = true;
                 }
             }
 
             match event {
-                Event::Suspended => {
-                    *controlFlow = ControlFlow::Wait;
-                }
-                Event::Resumed => {
-                    *controlFlow = ControlFlow::Poll;
-                }
                 Event::WindowEvent { event, .. } => {
                     self.gui.handleEvent(&event);
                     match *self.guiCommands.borrow() {
@@ -283,15 +273,8 @@ impl Console {
                     }
                 }
                 Event::RedrawRequested(_) => {
-                    let frame = self.pixels.get_frame();
-                    for (idx, pixel) in frame.chunks_exact_mut(4).into_iter().enumerate() {
-                        let realIdx = idx * 3;
-                        pixel[0] = pixelBuffer[realIdx];
-                        pixel[1] = pixelBuffer[realIdx + 1];
-                        pixel[2] = pixelBuffer[realIdx + 2];
-                        pixel[3] = 0xFF;
-                    }
 
+                    self.copyBufferToPixels(&pixelBuffer);
                     self.gui.prepareGui(&self.window);
 
                     self.pixels.render_with(|encoder, target, context| {
