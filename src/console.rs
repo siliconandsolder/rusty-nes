@@ -89,6 +89,7 @@ impl Console {
         let gui = Gui::new(windowSize.width, windowSize.height, scale as f32, guiCommands.clone(), &pixels);
 
 
+        // move all of this to another function
         let controller1 = Rc::new(RefCell::new(Controller::new()));
         let bus = Rc::new(RefCell::new(DataBus::new()));
         bus.borrow_mut().attachController1(controller1);
@@ -141,8 +142,20 @@ impl Console {
         let mut canPressEscape: bool = true;
 
         let mut input = WinitInputHelper::new();
-        let imgBytes = include_bytes!("./resources/rustynes_splash_screen.png");
-        let bytes = image::load_from_memory(imgBytes).unwrap().to_rgb8().into_raw();
+        let img = include_bytes!("./resources/rustynes_splash_screen.png");
+        let imgBytes = image::load_from_memory(img).unwrap().to_rgb8().into_raw();
+
+        let mut pixelBuffer: Vec<u8> = vec![0; 256 * 240 * 3];
+        pixelBuffer = imgBytes.clone();
+
+        let frame = self.pixels.get_frame();
+        for (idx, pixel) in frame.chunks_exact_mut(4).into_iter().enumerate() {
+            let realIdx = idx * 3;
+            pixel[0] = pixelBuffer[realIdx];
+            pixel[1] = pixelBuffer[realIdx + 1];
+            pixel[2] = pixelBuffer[realIdx + 2];
+            pixel[3] = 0xFF;
+        }
         //self.updateMsgBox("HELP");
 
         self.eventLoop.take().unwrap().run(move |event, _, controlFlow | {
@@ -150,14 +163,7 @@ impl Console {
             let state = &self.gameState;
             match *state {
                 GameState::NotLoaded => {
-                    let frame = self.pixels.get_frame();
-                    for (idx, pixel) in frame.chunks_exact_mut(4).into_iter().enumerate() {
-                        let realIdx = idx * 3;
-                        pixel[0] = bytes[realIdx];
-                        pixel[1] = bytes[realIdx + 1];
-                        pixel[2] = bytes[realIdx + 2];
-                        pixel[3] = 0xFF;
-                    }
+                    self.window.request_redraw();
 
                     if input.update(&event) {
                         if canPressEscape && input.key_pressed(VirtualKeyCode::Escape) {
@@ -171,15 +177,7 @@ impl Console {
                 GameState::Loaded => {
                     for _ in 0..3 {
                         if let Some(buffer) = self.ppu.borrow_mut().cycleAndPrepareTexture().cloned() {
-                            let frame = self.pixels.get_frame();
-                            for (idx, pixel) in frame.chunks_exact_mut(4).into_iter().enumerate() {
-                                let realIdx = idx * 3;
-                                pixel[0] = buffer[realIdx];
-                                pixel[1] = buffer[realIdx + 1];
-                                pixel[2] = buffer[realIdx + 2];
-                                pixel[3] = 0xFF;
-                            }
-
+                            pixelBuffer = buffer;
                             self.window.request_redraw();
                         }
                     }
@@ -199,6 +197,15 @@ impl Console {
 
                         if canPressEscape && input.key_pressed(VirtualKeyCode::Escape) {
                             canPressEscape = false;
+                            pixelBuffer = imgBytes.clone();
+                            let frame = self.pixels.get_frame();
+                            for (idx, pixel) in frame.chunks_exact_mut(4).into_iter().enumerate() {
+                                let realIdx = idx * 3;
+                                pixel[0] = pixelBuffer[realIdx];
+                                pixel[1] = pixelBuffer[realIdx + 1];
+                                pixel[2] = pixelBuffer[realIdx + 2];
+                                pixel[3] = 0xFF;
+                            }
                             self = Console::assembleConsole(self.audioSystem.clone(), None);
                         }
                     }
@@ -219,8 +226,6 @@ impl Console {
                     *controlFlow = ControlFlow::Poll;
                 }
                 Event::WindowEvent { event, .. } => {
-
-
                     self.gui.handleEvent(&event);
                     match *self.guiCommands.borrow() {
                         GuiCommands::Default => {}
@@ -278,6 +283,14 @@ impl Console {
                     }
                 }
                 Event::RedrawRequested(_) => {
+                    let frame = self.pixels.get_frame();
+                    for (idx, pixel) in frame.chunks_exact_mut(4).into_iter().enumerate() {
+                        let realIdx = idx * 3;
+                        pixel[0] = pixelBuffer[realIdx];
+                        pixel[1] = pixelBuffer[realIdx + 1];
+                        pixel[2] = pixelBuffer[realIdx + 2];
+                        pixel[3] = 0xFF;
+                    }
 
                     self.gui.prepareGui(&self.window);
 
