@@ -84,7 +84,6 @@ impl Console {
         let gui = Gui::new(windowSize.width, windowSize.height, scale as f32, guiCommands.clone(), &pixels);
 
 
-        // move all of this to another function
         let bus = Rc::new(RefCell::new(DataBus::new()));
         bus.borrow_mut().attachController1(Rc::new(RefCell::new(Controller::new())));
         let cpu = Rc::new(RefCell::new(Cpu::new(bus.clone())));
@@ -150,8 +149,6 @@ impl Console {
 
     pub fn run(mut self) {
 
-        //let mut fps = FPSManager::new();
-        //fps.set_framerate(60);
         let mut audioTime: f64 = 0.0;
         let mut canPressEscape: bool = true;
 
@@ -163,7 +160,6 @@ impl Console {
         pixelBuffer = imgBytes.clone();
 
         self.copyBufferToPixels(&pixelBuffer);
-        //self.updateMsgBox("HELP");
 
         self.eventLoop.take().unwrap().run(move |event, _, controlFlow | {
 
