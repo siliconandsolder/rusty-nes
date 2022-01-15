@@ -65,11 +65,6 @@ impl Console {
         let sdl = sdl2::init().unwrap();
         let audioSystem = Rc::new(RefCell::new(sdl.audio().unwrap()));
 
-        return Console::assembleConsole(audioSystem, game);
-    }
-
-    fn assembleConsole(audioSystem: Rc<RefCell<AudioSubsystem>>, game: Option<&str>) -> Self {
-
         let guiCommands = Rc::new(RefCell::new(GuiCommands::Default));
         let eventLoop = EventLoop::new();
         let size = LogicalSize::new(SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -90,9 +85,8 @@ impl Console {
 
 
         // move all of this to another function
-        let controller1 = Rc::new(RefCell::new(Controller::new()));
         let bus = Rc::new(RefCell::new(DataBus::new()));
-        bus.borrow_mut().attachController1(controller1);
+        bus.borrow_mut().attachController1(Rc::new(RefCell::new(Controller::new())));
         let cpu = Rc::new(RefCell::new(Cpu::new(bus.clone())));
         bus.borrow_mut().attachCpu(cpu.clone());
         let apu = Rc::new(RefCell::new(Apu::new(bus.clone(), audioSystem.clone())));
@@ -130,8 +124,17 @@ impl Console {
         }
     }
 
-
     fn returnToSplashScreen(&mut self) -> () {
+        self.bus = Rc::new(RefCell::new(DataBus::new()));
+        self.bus.borrow_mut().attachController1(Rc::new(RefCell::new(Controller::new())));
+        self.cpu = Rc::new(RefCell::new(Cpu::new(self.bus.clone())));
+        self.apu = Rc::new(RefCell::new(Apu::new(self.bus.clone(), self.audioSystem.clone())));
+        
+        let ppuBus = PpuBus::new();
+        self.ppu = Rc::new(RefCell::new(Ppu::new(self.bus.clone(), ppuBus)));
+        self.bus.borrow_mut().attachPpu(self.ppu.clone());
+        
+        self.gameState = GameState::NotLoaded;
     }
 
     fn copyBufferToPixels(&mut self, buffer: &Vec<u8>) -> () {
@@ -202,7 +205,7 @@ impl Console {
                             canPressEscape = false;
                             pixelBuffer = imgBytes.clone();
                             self.copyBufferToPixels(&pixelBuffer);
-                            self = Console::assembleConsole(self.audioSystem.clone(), None);
+                            self.returnToSplashScreen();
                         }
 
                         self.window.request_redraw();

@@ -14,7 +14,7 @@ serde_derive = "1.0.132"
 serde_json = "1.0.73"
 serde = {version = "1.0.132", features = ["derive", "serde_derive"]}
 clap = {version = "2.33.3", features = ["yaml"]}
-sdl2 = {version = "0.35.1", default-features = false}
+sdl2 = {version = "0.35.1"}
 
 wgpu = "0.12"
 image = "0.23"
