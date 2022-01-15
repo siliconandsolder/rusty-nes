@@ -127,7 +127,9 @@ impl Console {
         self.bus = Rc::new(RefCell::new(DataBus::new()));
         self.bus.borrow_mut().attachController1(Rc::new(RefCell::new(Controller::new())));
         self.cpu = Rc::new(RefCell::new(Cpu::new(self.bus.clone())));
+        self.bus.borrow_mut().attachCpu(self.cpu.clone());
         self.apu = Rc::new(RefCell::new(Apu::new(self.bus.clone(), self.audioSystem.clone())));
+        self.bus.borrow_mut().attachApu(self.apu.clone());
         
         let ppuBus = PpuBus::new();
         self.ppu = Rc::new(RefCell::new(Ppu::new(self.bus.clone(), ppuBus)));
