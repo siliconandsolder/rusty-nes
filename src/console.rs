@@ -39,7 +39,7 @@ const SCREEN_HEIGHT: u32 = 720;
 const PIXEL_WIDTH: u32 = 256;
 const PIXEL_HEIGHT: u32 = 240;
 
-
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum GameState {
     NotLoaded,
     Loaded
@@ -159,9 +159,11 @@ impl Console {
         let imgBytes = image::load_from_memory(img).unwrap().to_rgb8().into_raw();
 
         let mut pixelBuffer: Vec<u8> = vec![0; 256 * 240 * 3];
-        pixelBuffer = imgBytes.clone();
 
-        self.copyBufferToPixels(&pixelBuffer);
+        if self.gameState == GameState::NotLoaded {
+            pixelBuffer = imgBytes.clone();
+            self.copyBufferToPixels(&pixelBuffer);
+        }
 
         self.eventLoop.take().unwrap().run(move |event, _, controlFlow | {
 
