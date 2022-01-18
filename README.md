@@ -24,7 +24,7 @@ If you run the binary/executable with no args, the following splash screen will 
 
 <img src="./src/resources/rustynes_splash_screen.png" width=500/>
 
-Click File -> Open, select a .rom file, and start playing! 
+Click File -> Open, select a .nes file, and start playing! 
 
 ### Load a Specific ROM
 If you would like to load a .nes file at launch, you can use the following argument:
