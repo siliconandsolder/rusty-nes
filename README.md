@@ -12,7 +12,7 @@ https://user-images.githubusercontent.com/31429425/149857800-5445866b-7a37-433f-
 * Mapper 3
 * Mapper 4
 
-A list of all NES games and their associated mappers can be found <a href="http://tuxnes.sourceforge.net/nesmapper.txt">here</a>.
+A list of all NES games and their associated mappers can be found <a href="http://tuxnes.sourceforge.net/nesmapper.txt" target="_blank">here</a>.
 
 ## Usage
 The lastest versions of RustyNES for Ubuntu, macOS, and Windows can be found under Releases.
@@ -74,9 +74,11 @@ If you would like to create a save state of a game, click File -> Save State on 
 ## Building
 In order to build RustyNES, you will need to install the SDL2 development libraries. The following operating systems are supported:
 
-* <a href="https://github.com/Rust-SDL2/rust-sdl2#linux">Linux</a>
-* <a href="https://github.com/Rust-SDL2/rust-sdl2#macos">macOS</a>
-* <a href="https://github.com/Rust-SDL2/rust-sdl2#windows-msvc">Windows</a>
+* <a href="https://github.com/Rust-SDL2/rust-sdl2#linux" target="_blank">Linux</a>
+* <a href="https://github.com/Rust-SDL2/rust-sdl2#macos" target="_blank">macOS</a>
+* <a href="https://github.com/Rust-SDL2/rust-sdl2#windows-msvc" target="_blank">Windows</a>
+
+If you are using Linux, you will also need the <a href="https://github.com/PolyMeilex/rfd#dependencies" target="_blank">GTK3 development libraries</a> in order to build Rust File Dialog (RFD).
   
 Once the libraries are installed, you should be able to build a binary by running the following command in the root of your RustyNES repository: 
 ```
